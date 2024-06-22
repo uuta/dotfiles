@@ -144,8 +144,8 @@ alias cda='cd ~/after-clean-install'
 ## WezTerm
 alias cdw='cd ~/.config/wezterm'
 
-## docker tutorial
-alias cdd='cd ~/docker-tutorial'
+## dotfiles
+alias cdd='cd ~/dotfiles'
 
 ## gas
 alias cdg='cd ~/gas-workout-logs'
