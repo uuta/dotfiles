@@ -117,8 +117,8 @@ dirtouch() {
 alias mkf=dirtouch
 
 ## zsh
-alias sz='source ~/.zshrc'
-alias vz='vi ~/.zshrc'
+alias sz='source ~/dotfiles/.zshrc'
+alias vz='vi ~/dotfiles/.zshrc'
 
 ## vim
 alias sv='source ~/.vimrc'
@@ -170,7 +170,7 @@ alias vg='vi ~/.gvimrc'
 
 ## neovim
 alias nn='nvim'
-alias nnz='nvim ~/.zshrc'
+alias nnz='nvim ~/dotfiles/.zshrc'
 alias nni='nvim ~/.config/nvim/init.lua'
 alias nnb='nvim ~/after-clean-install/Brewfile'
 
