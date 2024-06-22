@@ -1,0 +1,12 @@
+-- TODO: こいつを使用するとdiagnosticのbufferが勝手に開く
+-- めちゃくちゃむかついた
+-- {
+-- 	'ray-x/navigator.lua',
+-- 	dependencies = { {
+-- 		'ray-x/guihua.lua',
+-- 		build = 'cd lua/fzy && make'
+-- 	}, { 'neovim/nvim-lspconfig' } }
+-- },
+-- 'ray-x/guihua.lua',
+--
+return {}
