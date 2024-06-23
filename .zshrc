@@ -55,6 +55,9 @@ export PATH="$PATH:~/flutter/bin"
 export ANDROID_HOME=/Users/$USER/Library/Android/sdk
 export PATH="$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools"
 
+# WezTerm
+export WEZTERM_CONFIG_FILE="$HOME/dotfiles/.config/wezterm/wezterm.lua"
+
 ### Added by Zinit's installer
 if [[ ! -f /opt/homebrew/Cellar/zinit/3.7/zinit.zsh ]]; then
     print -P "%F{33}▓▒░ %F{220}Installing %F{33}DHARMA%F{220} Initiative Plugin Manager (%F{33}zdharma/zinit%F{220})…%f"
@@ -142,7 +145,7 @@ alias cdr='cd ~/trander-rust'
 alias cda='cd ~/after-clean-install'
 
 ## WezTerm
-alias cdw='cd ~/.config/wezterm'
+alias cdw='cd ~/.config/WezTerm'
 
 ## dotfiles
 alias cdd='cd ~/dotfiles'
@@ -287,4 +290,19 @@ else
 fi
 unset __conda_setup
 # <<< conda initialize <<<
+
+
+
+# function() link() {
+#   [ -f $HOME/$1 ] && { 
+#     echo "relinking $HOME/$1" && rm $HOME/$1
+#   } || {
+#     echo "linking $HOME/$1"
+#   }
+#   ln -sf $SCRIPT_DIR/$1 $HOME/$1
+# }
+#
+# link dotfiles/.config/wezterm/.wezterm.lua
+
+
 
