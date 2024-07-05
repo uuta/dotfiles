@@ -18,7 +18,7 @@ return {
             "none-ls-external-sources.diagnostics.yamllint",
 
             -- formatting
-            "none-ls-external-sources.formatting.eslint_d",
+            -- "none-ls-external-sources.formatting.eslint_d",
             "none-ls-external-sources.formatting.rustfmt",
 
             -- code actions
