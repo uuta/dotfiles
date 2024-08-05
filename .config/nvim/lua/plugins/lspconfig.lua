@@ -14,7 +14,7 @@ return {
                     require("lspconfig")[server].setup({
                         -- Language server
                         init_options = {
-                            hostInfo = "neovim",
+                            -- hostInfo = "neovim",
                             preferences = {
                                 importModuleSpecifierEnding = "minimal",
                                 importModuleSpecifierPreference = "non-relative",
@@ -42,9 +42,9 @@ return {
                                 }
                             ),
                         },
-                        settings = {
-                            Lua = { diagnostics = { globals = { "vim" } } },
-                        },
+                        -- settings = {
+                        --     Lua = { diagnostics = { globals = { "vim" } } },
+                        -- },
                     })
                 end,
             })
