@@ -174,7 +174,7 @@ alias vg='vi ~/.gvimrc'
 ## neovim
 alias nn='nvim'
 alias nnz='nvim ~/dotfiles/.zshrc'
-alias nni='nvim ~/.config/nvim/init.lua'
+alias nni='nvim ~/dotfiles/.config/nvim/init.lua'
 alias nnb='nvim ~/after-clean-install/Brewfile'
 
 ### symlink the nvim folder
