@@ -177,6 +177,12 @@ alias nnz='nvim ~/dotfiles/.zshrc'
 alias nni='nvim ~/.config/nvim/init.lua'
 alias nnb='nvim ~/after-clean-install/Brewfile'
 
+### symlink the nvim folder
+### if the symlink does not exist
+if [ ! -L ~/.config/nvim ]; then
+    ln -s ~/dotfiles/.config/nvim ~/.config/nvim
+fi
+
 ## php
 alias php7.0='/Applications/MAMP/bin/php/php7.0.33/bin/php'
 
