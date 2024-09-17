@@ -38,11 +38,11 @@ keymap("n", "<Leader>9", "<cmd>BufferLineGoToBuffer -1<cr>")
 keymap("n", "<Leader>ba", "<cmd>BufferLineCloseOthers<cr>")
 
 --- Split screen
-keymap("n", "<Leader>t", "<C-w>v<cr>")
+keymap("n", "<Leader>mm", "<C-w>v<cr>")
 keymap("n", "<Leader>ml", "<C-w>l<cr>")
 keymap("n", "<Leader>mh", "<C-w>h<cr>")
 keymap("n", "<Leader>mk", "<C-w>k<cr>")
-keymap("n", "<Leader>mm", "<C-w>j<cr>")
+keymap("n", "<Leader>mj", "<C-w>j<cr>")
 
 --- LSP
 keymap("n", "<Leader>s", "<cmd>lua vim.lsp.buf.format()<CR>")
