@@ -272,11 +272,6 @@ export PATH=$PATH:$GOPATH/bin
 # surfingkeys gulp
 export PATH=$PATH:$HOME/surfingkeys-conf/node_modules/.bin
 
-# mecab for SocialDog
-export CGO_LDFLAGS="`mecab-config --libs`"
-export CGO_CFLAGS="-I`mecab-config --inc-dir`"
-export MECAB_DIC_PATH=$(mecab-config --dicdir)/mecab-ipadic-neologd
-
 # nvm
 export NVM_DIR="$HOME/.nvm"
   [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"  # This loads nvm
