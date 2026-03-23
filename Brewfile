@@ -72,7 +72,7 @@ brew "jj"
 brew "fzf"
 brew "qwen-code"
 brew "rustup"
-brew "tree-sitter"
+brew "tree-sitter-cli"
 
 # Go
 brew "gopls"
