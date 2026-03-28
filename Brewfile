@@ -140,6 +140,8 @@ cask "codex-app"
 cask "claudebar"
 cask "ovice"
 cask "android-commandlinetools"
+cask "supercollider"
+cask "cmux"
 
 # WezTerm
 tap "wez/wezterm"
