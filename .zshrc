@@ -308,6 +308,14 @@ export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=46;34:cd=43;34:su=41;30:sg=46
 
 export XDG_CONFIG_HOME=~/dotfiles/.config
 
+if [ -L "$HOME/.zshrc" ] || [ ! -e "$HOME/.zshrc" ]; then
+    ln -sfn "$HOME/dotfiles/.zshrc" "$HOME/.zshrc"
+fi
+
+if [ -L "$HOME/.config" ] || [ ! -e "$HOME/.config" ]; then
+    ln -sfn "$HOME/dotfiles/.config" "$HOME/.config"
+fi
+
 alias ls="ls -GF"
 alias gls="gls --color"
 
@@ -384,7 +392,7 @@ export PATH="$HOME/.rye/shims:$PATH"
 # export PYENV_ROOT="$HOME/.pyenv"
 # export PATH="$PYENV_ROOT/bin:$PATH"
 
-export PATH=/opt/homebrew/bin:$PATH
+export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:/opt/homebrew/bin:$PATH"
 # export PATH="/opt/homebrew/opt/python@3.8/libexec/bin:$PATH"
 # export PATH="/opt/homebrew/Cellar/python@3.10/3.10.11/bin:$PATH"
 #
