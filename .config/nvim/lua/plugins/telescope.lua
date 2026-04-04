@@ -9,28 +9,41 @@ return {
   {
     "nvim-telescope/telescope.nvim",
     -- tag = '0.1.8',
-    defaults = {
-      vimgrep_arguments = {
-        "rg",
-        "--color=never",
-        "--no-heading",
-        "--with-filename",
-        "--line-number",
-        "--column",
-        "--smart-case",
-        "--ignore",
-      },
-    },
     -- Telescope live grep args
     -- Search strings with filters such as a directory
     -- @see https://github.com/nvim-telescope/telescope-live-grep-args.nvim
     dependencies = { { "nvim-telescope/telescope-live-grep-args.nvim" } },
     config = function()
+      local telescope = require("telescope")
       local lga_actions = require("telescope-live-grep-args.actions")
-      require("telescope").setup({
+      local hidden_rg_args = { "--hidden", "--glob", "!**/.git/*" }
+
+      telescope.setup({
+        defaults = {
+          vimgrep_arguments = {
+            "rg",
+            "--color=never",
+            "--no-heading",
+            "--with-filename",
+            "--line-number",
+            "--column",
+            "--smart-case",
+            "--hidden",
+            "--glob",
+            "!**/.git/*",
+          },
+          file_ignore_patterns = { "%.git/" },
+        },
+        pickers = {
+          find_files = {
+            hidden = true,
+            find_command = { "rg", "--files", "--hidden", "--glob", "!**/.git/*" },
+          },
+        },
         extensions = {
           live_grep_args = {
-            auto_quoting = true,             -- enable/disable auto-quoting
+            auto_quoting = true, -- enable/disable auto-quoting
+            additional_args = hidden_rg_args,
             -- define mappings, e.g.
             mappings = {
               i = {
@@ -53,15 +66,18 @@ return {
               },
             },
           },
-        },
-        fzf = {
-          fuzzy = true,                             -- false will only do exact matching
-          override_generic_sorter = true,           -- override the generic sorter
-          override_file_sorter = true,              -- override the file sorter
-          case_mode = "smart_case",                 -- or "ignore_case" or "respect_case"
-          -- the default case_mode is "smart_case"
+          fzf = {
+            fuzzy = true, -- false will only do exact matching
+            override_generic_sorter = true, -- override the generic sorter
+            override_file_sorter = true, -- override the file sorter
+            case_mode = "smart_case", -- or "ignore_case" or "respect_case"
+            -- the default case_mode is "smart_case"
+          },
         },
       })
+
+      pcall(telescope.load_extension, "fzf")
+      pcall(telescope.load_extension, "live_grep_args")
     end,
     cmd = "Telescope",
   },
