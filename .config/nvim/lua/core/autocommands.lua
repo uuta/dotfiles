@@ -1,8 +1,15 @@
 local api = vim.api
 
--- Copy path name
+-- Copy related path
 api.nvim_create_user_command("CpPath", function()
   local path = vim.fn.expand("%:p:.")
+  vim.fn.setreg("+", path)
+  vim.notify('Copied "' .. path .. '" to the clipboard!')
+end, {})
+
+-- Copy absolute path
+api.nvim_create_user_command("CpAbPath", function()
+  local path = vim.fn.expand("%:p")
   vim.fn.setreg("+", path)
   vim.notify('Copied "' .. path .. '" to the clipboard!')
 end, {})
