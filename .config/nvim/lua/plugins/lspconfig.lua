@@ -3,6 +3,7 @@ local lsp_servers = {
   "html",
   "lua_ls",
   "astro",
+  "rust_analyzer",
   -- "mypy",
   -- "efm",
   "ts_ls",

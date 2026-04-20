@@ -1,11 +1,11 @@
 ---
 name: pbi-task-split
-description: PBI（Product Backlog Item）をレイヤー別に分割し、並列実施可能なタスクを特定する。共通化すべき部品の洗い出し、依存関係の整理、クリーンアップ計画まで含む。
+description: PBI（Product Backlog Item）をレイヤー別に分割し、並列実施可能なタスクを特定する。boundary / contract タスク、共通化すべき部品の洗い出し、依存関係の整理、クリーンアップ計画まで含む。
 ---
 
 # PBI Task Split
 
-PBIを実装可能なタスクに分割する。レイヤー別分割、共通化、並列可否を考慮した計画を作成する。
+PBIを実装可能なタスクに分割する。レイヤー別分割、boundary / contract の明示、共通化、並列可否を考慮した計画を作成する。
 
 ## Procedure
 
@@ -19,17 +19,32 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、共通�
 - 関連するファイル（Router, UseCase, Schema, Domain等）を特定
 - 参考になる既存実装（類似機能）があれば調査
 
-### 3. 共通化すべき部品の特定
+### 3. boundary / contract の有無を判定
+- 以下のいずれかに当てはまる場合、**実装タスクの前に boundary / contract タスクを切る**
+  - フロントエンド / バックエンドが別リポジトリまたは別レイヤーで進む
+  - 複数 agent / 人間が並列で実装する
+  - endpoint、イベント、DTO、認証・認可、所有権、エラー shape の認識ズレが起きやすい
+  - bootstrap や on-boarding のように、複数画面・複数APIをまたぐ初期フローがある
+- boundary / contract タスクの内容例
+  - canonical endpoint / route の確定
+  - request / response / error shape の固定
+  - auth source of truth、identity、ownership の明示
+  - sequence diagram や request examples の作成
+  - OpenAPI / Swagger / interface / typed client contract の更新
+- **重要**: interface が曖昧なまま並列実装に入らない。ズレや再実装コストが高い場合、boundary タスクを独立 issue にする。
+
+### 4. 共通化すべき部品の特定
 - 特定機能に配置されているが汎用的なコンポーネントを洗い出し
 - 例: Validator, Domain Model, Utility
 - 共通モジュールへの移動を計画に含める
 
-### 4. レイヤー別タスク分割
+### 5. レイヤー別タスク分割
 
 以下の観点でタスクを分割する：
 
 | レイヤー | 内容例 |
 |---------|--------|
+| **Boundary / Contract** | OpenAPI、interface、DTO、sequence、ownership、canonical endpoint |
 | **Domain** | 共通モジュール作成、エラー定義、Model |
 | **Infrastructure** | プロンプト作成、外部API連携 |
 | **Presentation/Schema** | Request/Response スキーマ |
@@ -38,8 +53,9 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、共通�
 
 **重要**: 1タスク1機能の原則。1タスクに複数機能を入れない。
 - 例: `/review` 400エラーと `/v2/review` 新規作成は別タスク
+- 例: `POST /user` bootstrap contract の確定 と、その handler 実装は別タスクにできる
 
-### 5. 依存関係・並列可否の整理
+### 6. 依存関係・並列可否の整理
 
 ```
 独立タスク（いつでも着手可能）
@@ -48,23 +64,27 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、共通�
   - フロント側タスク（別リポジトリ）
 
 依存チェーン
-  Domain → Infrastructure → Schema → UseCase → Router
+  Boundary / Contract → Domain → Infrastructure → Schema → UseCase → Router
 ```
 
-- **interface が決まれば並列可能** なタスクを明示
+- **boundary / interface が決まれば並列可能** なタスクを明示
 - 独立タスクは「いつでも着手可能」と記載
+- 並列化したい場合、boundary タスクを完了条件付きの先行タスクとして書く
+- frontend / backend で契約を共有する場合、どの artifact が source of truth かを書く
 
-### 6. クリーンアップ計画
+### 7. クリーンアップ計画
 - 削除対象ファイルを洗い出し
 - 旧コード、旧テスト、不要なimportを特定
 - **最後に実施するタスク** として配置
 
-### 7. フロント側タスク（該当する場合）
+### 8. フロント側タスク（該当する場合）
 - 別リポジトリの作業を明示
 - バックエンドと独立して実施可能であることを記載
 - エンドポイント差し替え、バリデーション追加等
+- backend との境界がある場合、先に boundary / contract タスクを切る
+- frontend は boundary の consumer として何を実装するのかを明示する
 
-### 8. 出力フォーマット
+### 9. 出力フォーマット
 
 ```markdown
 # {機能名} 実装タスク分割
@@ -74,6 +94,13 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、共通�
 
 ## 方針
 - {エンドポイント構成等}
+- {boundary / contract の source of truth}
+
+## Boundary / Contract
+- {canonical endpoint / route}
+- {request / response / error shape}
+- {auth / ownership / identity の前提}
+- {未確定事項があればここに明記}
 
 ---
 
@@ -105,14 +132,17 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、共通�
 |---------|---------|
 | 現行xxx | `path/to/file` |
 | 参考実装 | `path/to/reference` |
+| 契約定義 | `path/to/openapi-or-interface` |
 ```
 
-### 9. Obsidian vault に保存
+### 10. Obsidian vault に保存
 - `/plan-on-md` を使用して保存
 - パス: `~/uuta/Projects/{project}/{branch}/{file}.md`
 
 ## 観点チェックリスト
 
+- [ ] boundary / contract を先に切るべきPBIか判定したか
+- [ ] 並列実装前の source of truth を明示したか
 - [ ] レイヤー別に分割されているか
 - [ ] 1タスク1機能になっているか
 - [ ] 共通化すべき部品を特定したか

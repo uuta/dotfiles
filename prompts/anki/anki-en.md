@@ -25,8 +25,8 @@ When you input an English word, I will provide:
 4. **Use Cases** - Common contexts where the word is used (in English)
 5. **Trivia** - Interesting facts about the word, if any (in English with Japanese translation)
 6. **Synonyms** - Similar words with explanations of differences (in English)
-7. **Standard Examples** - 3 example sentences with Japanese translations (displayed in console and table format)
-8. **Slang Examples** - 3 colloquial usage examples with translations (displayed in console and table format)
+7. **Standard Examples** - 3 example sentences with Japanese translations (displayed as a list)
+8. **Slang Examples** - 3 colloquial usage examples with translations (displayed as a list)
 9. **Visual Representation** - Mermaid diagram if applicable (in English)
 
 **Console Display**: All example sentences will be shown in the terminal for easy review before adding to Anki.
@@ -57,7 +57,7 @@ When you input an English sentence, I will provide:
 
 When you input Japanese text, I will provide:
 
-1. **English Translations** - Up to 10 different ways to express it in English (table format)
+1. **English Translations** - Up to 10 different ways to express it in English (list format)
    - Include formal and informal versions
    - Add phrasal verbs and slang where appropriate
    - Show context-dependent variations

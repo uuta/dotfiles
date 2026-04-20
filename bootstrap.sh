@@ -11,9 +11,15 @@ source ~/.zprofile
 # homebrew-bundle
 brew bundle --file ./Brewfile
 
-# Create symlinks for dotfiles
-ln -sf ~/dotfiles/.zshrc ~/.zshrc
-ln -sf ~/dotfiles/.config ~/.config
+# Initialize Rust via rustup
+RUSTUP_BIN="$(brew --prefix rustup)/bin/rustup"
+if [ -x "$RUSTUP_BIN" ]; then
+	if ! "$RUSTUP_BIN" show active-toolchain > /dev/null 2>&1; then
+		"$RUSTUP_BIN" default stable
+	fi
+
+	"$RUSTUP_BIN" component add rust-analyzer rust-src rustfmt clippy
+fi
 
 # Setup GitHub CLI authentication only if needed
 if ! gh auth status > /dev/null 2>&1; then

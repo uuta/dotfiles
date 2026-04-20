@@ -27,8 +27,8 @@ When you input a Russian word, I will provide:
 5. **Use Cases** - Common contexts where the word is used (in English)
 6. **Trivia** - Interesting facts about the word, if any (in English with Japanese translation)
 7. **Synonyms** - Similar words with explanations of differences (in English)
-8. **Standard Examples** - 3 example sentences with English/Japanese translations (displayed in console and table format)
-9. **Colloquial Examples** - 3 everyday usage examples with translations (displayed in console and table format)
+8. **Standard Examples** - 3 example sentences with English/Japanese translations (displayed as a list)
+9. **Colloquial Examples** - 3 everyday usage examples with translations (displayed as a list)
 10. **Visual Representation** - Mermaid diagram if applicable (in English)
 
 **Console Display**: All example sentences will be shown in the terminal for easy review before adding to Anki.
@@ -60,7 +60,7 @@ When you input a Russian sentence, I will provide:
 
 When you input English or Japanese text, I will provide:
 
-1. **Russian Translations** - Up to 10 different ways to express it in Russian (table format)
+1. **Russian Translations** - Up to 10 different ways to express it in Russian (list format)
    - Include formal and informal versions (ты/вы forms)
    - Add colloquial and slang expressions where appropriate
    - Show context-dependent variations

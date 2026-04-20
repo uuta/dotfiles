@@ -8,3 +8,4 @@
 .config/.copilot/
 .config/configstore/
 .config/github-copilot/
+test/node_modules/
