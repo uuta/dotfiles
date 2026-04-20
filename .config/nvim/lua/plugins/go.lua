@@ -12,6 +12,9 @@ return {
     },
     config = function()
         require("go").setup({ tag_options = "" })
+        vim.api.nvim_create_user_command("GoDockerTest", function()
+            require("core.go_docker_test").test_func({ tags = "integration" })
+        end, {})
     end,
     event = { "CmdlineEnter" },
     ft = { "go", "gomod" },

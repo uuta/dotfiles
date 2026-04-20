@@ -104,7 +104,7 @@ keymap("n", "<Leader>;rj", "<cmd>GoRmTag json<CR>")
 keymap("n", "<Leader>;rd", "<cmd>GoRmTag db<CR>")
 keymap("n", "<Leader>;rx", "<cmd>GoRmTag xml<CR>")
 -- https://github.com/ray-x/go.nvim#unit-test-with-gotests-and-testify
-keymap("n", "<Leader>;t", "<cmd>GoTestFunc -tags=integration<CR>")
+keymap("n", "<Leader>;t", "<cmd>GoDockerTest<CR>")
 keymap("n", "<Leader>;s", "<cmd>GoTestFunc -s<CR>")
 keymap("n", "<Leader>;e", "<cmd>GoIfErr<CR>")
 keymap("n", "<Leader>;i", "<cmd>GoImports<CR>")

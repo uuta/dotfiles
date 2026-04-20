@@ -1,4 +1,5 @@
 local lsp_servers = {
+  "gopls",
   "html",
   "lua_ls",
   "astro",
