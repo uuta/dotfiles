@@ -3,10 +3,14 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "allow": ["mcp__codex__codex", "mcp__codex__codex-reply", "mcp__pencil"],
+    "allow": [
+      "mcp__codex__codex",
+      "mcp__codex__codex-reply",
+      "mcp__pencil"
+    ],
     "deny": []
   },
-  "model": "sonnet[1m]",
+  "model": "opus[1m]",
   "hooks": {
     "Notification": [
       {
