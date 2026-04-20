@@ -67,6 +67,7 @@ brew "jj"
 brew "fzf"
 brew "qwen-code"
 brew "rustup"
+brew "tree-sitter-cli"
 
 # Go
 brew "gopls"
@@ -125,6 +126,8 @@ cask "codex-app"
 cask "claudebar"
 cask "ovice"
 cask "android-commandlinetools"
+cask "supercollider"
+cask "cmux"
 
 # WezTerm
 tap "wez/wezterm"

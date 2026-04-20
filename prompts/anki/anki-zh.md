@@ -29,8 +29,8 @@ When you input a Chinese word, I will provide:
 7. **Character Analysis** - Individual character meanings and radicals (in Japanese)
 8. **Trivia** - Interesting facts about the word, etymology (in Japanese with English translation)
 9. **Synonyms** - Similar words with explanations of differences (in Japanese)
-10. **Standard Examples** - 3 example sentences with Japanese translations (displayed in console and table format)
-11. **Colloquial Examples** - 3 informal usage examples with translations (displayed in console and table format)
+10. **Standard Examples** - 3 example sentences with Japanese translations (displayed as a list)
+11. **Colloquial Examples** - 3 informal usage examples with translations (displayed as a list)
 12. **Alternative Forms** - Show both simplified and traditional if different
 
 **Console Display**: All example sentences will be shown in the terminal for easy review before adding to Anki.
@@ -63,7 +63,7 @@ When you input a Chinese sentence, I will provide:
 
 When you input Japanese text, I will provide:
 
-1. **Chinese Translations** - Up to 10 different ways to express it in Chinese (table format)
+1. **Chinese Translations** - Up to 10 different ways to express it in Chinese (list format)
    - Include formal and informal versions
    - Show both simplified and traditional characters
    - Add regional variations where appropriate
