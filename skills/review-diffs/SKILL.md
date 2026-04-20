@@ -10,6 +10,8 @@ allowed-tools: Bash(tmux:*), Bash(git:*), Bash(mkdir:*), Bash(gh:*), Bash(rg:*),
 
 Use parallel reviewers to find problems in a diff without losing issue-level direction.
 
+If the user wants this review to be part of a repeated `watch -> review -> fix -> repeat` supervisor loop around Claude Code in tmux, use `claude-tmux-review-loop`. This skill is the review dependency inside that larger loop.
+
 The manager owns:
 
 - review scope
@@ -96,10 +98,8 @@ mkdir -p docs/review
 Recommended output files:
 
 - `docs/review/requirements.md`
-- `docs/review/bug.md`
-- `docs/review/integration.md`
-- `docs/review/failure-paths.md`
-- `docs/review/performance.md`
+- `docs/review/correctness.md`
+- `docs/review/resilience.md`
 - `docs/review/security.md`
 - `docs/review/manager.md`
 
@@ -110,15 +110,13 @@ Create dedicated tmux windows. Each runs Claude Code with `--dangerously-skip-pe
 Model / effort policy:
 
 - `review-req` uses `--model opus --effort high`. Requirement compliance needs the strongest judgment.
-- The other 5 specialist reviewers use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient default for parallel work.
+- The other 3 specialist reviewers use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient default for parallel work.
 - The manager pass (step 7) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / high when possible.
 
 ```bash
 tmux new-window -n review-req -c "$(pwd)" 'claude --dangerously-skip-permissions --model opus --effort high'
-tmux new-window -n review-bug -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
-tmux new-window -n review-integration -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
-tmux new-window -n review-failure-paths -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
-tmux new-window -n review-performance -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
+tmux new-window -n review-correctness -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
+tmux new-window -n review-resilience -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 tmux new-window -n review-security -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 ```
 
@@ -153,82 +151,57 @@ Write to docs/review/requirements.md in the standard review format.
 If there are no findings, say "No issues found."
 ```
 
-### Agent 2: bug
+### Agent 2: correctness (bug + integration)
 
 ```text
 Read docs/review/contract.md first, then docs/review/diff.txt.
 
-Review for confirmed or near-certain bugs.
+Review for correctness — both single-file bugs and cross-file integration regressions.
 
-Focus on:
-- broken control flow
-- incorrect return values
-- wrong identifiers or stale state usage
+Single-file bugs:
+- broken control flow, incorrect return values, wrong identifiers or stale state usage
 - missing error handling that now breaks the intended flow
 - null / type / lifecycle issues that are clearly reachable
+- only report issues that are bugs now, not hypothetical ones
 
-Only report issues that are bugs now, not hypothetical ones.
-
-Write to docs/review/bug.md in the standard review format.
-If there are no findings, say "No issues found."
-```
-
-### Agent 3: integration
-
-```text
-Read docs/review/contract.md first, then docs/review/diff.txt.
-
-Review for cross-file and state-flow regressions.
-
-Focus on:
+Cross-file integration:
 - mismatches between service, notifier, and UI layers
 - bootstrap / restore / routing state inconsistencies
 - partial migrations that leave one side of an interface on the old model
 - generated or config artifacts that now disagree with the code
 - fragile assumptions across call boundaries
 
-Write to docs/review/integration.md in the standard review format.
+Write to docs/review/correctness.md in the standard review format.
 If there are no findings, say "No issues found."
 ```
 
-### Agent 4: failure paths
+### Agent 3: resilience (failure paths + performance)
 
 ```text
 Read docs/review/contract.md first, then docs/review/diff.txt.
 
-Review for failure handling and resilience gaps around external or fallible operations.
+Review for resilience — failure handling gaps and performance regressions.
 
-Focus on:
+Failure paths:
 - async calls that can fail but are not caught or surfaced
 - state that can be left inconsistent after failure
 - missing cleanup, loading reset, or rollback on unhappy paths
 - retries, timeouts, fallback behavior, or cancellation assumptions
 - error propagation mismatches between lower layers and user-visible state
 
-This lens is generic. Treat network calls, plugin calls, subprocesses, file I/O, database access, API boundaries, and background tasks as the main risk areas.
-
-Write to docs/review/failure-paths.md in the standard review format.
-If there are no findings, say "No issues found."
-```
-
-### Agent 5: performance
-
-```text
-Read docs/review/contract.md first, then docs/review/diff.txt.
-
-Review for performance regressions or obvious missed optimizations introduced by the diff.
-
-Focus on:
+Performance:
 - repeated expensive work on hot paths
 - redundant network calls
 - unnecessary allocations or recomputation
 - blocking work introduced into startup or frequent UI flows
 
-Write to docs/review/performance.md in the standard review format.
+Treat network calls, plugin calls, subprocesses, file I/O, database access, API boundaries, and background tasks as the main risk areas.
+
+Write to docs/review/resilience.md in the standard review format.
 If there are no findings, say "No issues found."
 ```
 
-### Agent 6: security
+### Agent 4: security
 
 ```text
 Read docs/review/contract.md first, then docs/review/diff.txt.
@@ -304,10 +277,8 @@ Close the review windows when finished:
 
 ```bash
 tmux kill-window -t review-req
-tmux kill-window -t review-bug
-tmux kill-window -t review-integration
-tmux kill-window -t review-failure-paths
-tmux kill-window -t review-performance
+tmux kill-window -t review-correctness
+tmux kill-window -t review-resilience
 tmux kill-window -t review-security
 ```
 

@@ -22,6 +22,7 @@ allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 - merge 済み PR に対応する専用 pane / window / worktree は、clean であれば回収してよい。識別は `<issue_number>` を共通キーにする
 - issue 予約は pane title だけでなく window 名にも残す
 - 実装 issue を Claude に渡す前に、sub-issue 側に明示的な implementation contract があることを確認する
+- 初回 assignment prompt には scope だけでなく `Done when` / `Not done if` / `Hard blockers` を必ず含める。runtime acceptance や external config が絡む issue を「コードと docs は入った」で完了扱いにさせてはいけない
 - issue 本文やコメントで仕様が明確になった場合、Claude に渡す前にその内容を sub-issue に反映する。会話中の口頭合意だけで渡してはいけない
 - routing / UX flow / API contract を変える issue は特に厳格に扱う。既存 flow を置き換えるのか、追加するだけなのかが issue に書かれていなければ割り当ててはいけない
 - frontend route / island / hydration 変更では、実装後の verification に `build` と bundle 警告確認を含める。test/lint だけで完了扱いにしてはいけない
@@ -36,6 +37,10 @@ Claude に実装を振る前に、対象 sub-issue が少なくとも次を持�
 - ユーザーがその flow に入る entrypoint
 - 変更対象として想定している既存ファイルやレイヤー
 - acceptance criteria または implementation steps
+- `done` の定義
+- `not done` とみなす条件
+- 必須 verification（例: build, simulator, physical device, API call, migration）
+- local secrets / external service / dashboard setup が前提なのか、なければ blocker なのか
 
 以下のような change は、上の contract が欠けていると誤実装しやすい。
 
@@ -60,6 +65,12 @@ frontend page / island 系 issue では、可能なら次も明文化する。
 - 重い dependency を lazy load する必要があるか
 - build 時に bundle / chunk size を確認すること
 
+runtime / native / external-config 依存の強い issue では、特に次を曖昧にしない。
+
+- 実値を repo に入れるべきか、ローカル/CI/外部 dashboard 側で持つべきか
+- その issue の完了条件に real value / real device / real service verification が含まれるか
+- その verification が現 turn で不可能なら `not done` なのか、別 issue に明示的に defer されているのか
+
 issue がこの水準に達していない場合は、Claude に投げる前にユーザーと詰めて sub-issue を更新する。
 
 ## Pre-Assignment Summary
@@ -70,6 +81,9 @@ Claude に送る前に、Codex は対象 issue の contract を短くまとめ�
 - old flow の扱い
 - in-scope files / components / routes
 - out-of-scope の境界
+- done when
+- not done if
+- hard blockers
 
 この summary に対してユーザーが違和感を示したら、assignment を止めて issue を更新してから再開する。
 
@@ -217,6 +231,7 @@ tmux select-pane -t <target> -T 'issue-<issue_number>'
 - `AGENTS.md` を守ること
 - この issue 以外に着手しないこと
 - issue に書かれた implementation contract を外さないこと
+- `Done when` / `Not done if` / `Hard blockers` を success criteria として扱うこと
 - 実装後は commit / push / PR をせず停止し、diff と検証結果を要約すること
 - frontend route / island / hydration 変更では `build` 結果と chunk 警告の有無も要約すること
 - ブロック時は停止して状況を要約すること
@@ -240,6 +255,7 @@ Rules:
 - Work only on this issue. Do not take on other sub-issues from the parent.
 - Inspect the relevant files before editing.
 - Run relevant tests or verification.
+- Treat the explicit success gates below as binding. Do not declare success just because code and docs were added.
 - If the issue changes frontend routes, islands, hydration, or large client-side dependencies, run build and inspect bundle/chunk warnings before stopping.
 - Do not commit, push, or create a pull request yet.
 - When implementation is ready, stop and summarize:
@@ -258,6 +274,15 @@ Implementation contract to follow:
 - <entrypoint / CTA behavior>
 - <in-scope files>
 - <out-of-scope boundary>
+
+Done when:
+- <explicit acceptance criteria that must be true before this issue is done>
+
+Not done if:
+- <conditions that keep the issue open even if code compiles>
+
+Hard blockers:
+- <missing secrets / dashboards / device verification / external setup that must be surfaced instead of guessed away>
 
 Suggested start:
 cd <worktree_path>
@@ -343,6 +368,7 @@ This assignment is an explicit user-approved override for a non-S issue. Keep sc
 
 ## Notes
 
+- Claude の assignment 後も Codex が tmux pane を監視し、review と fix 依頼を繰り返して review clean まで回したい場合は `claude-tmux-review-loop` を使う。この skill はその loop の assignment / setup 側の依存先
 - branch 名に `#` は使わない。必ず `feat/{issue_number}` にする
 - size label は 1 issue につき 1 つを前提にする
 - pane の予約ルールを守り、同じ issue の二重アサインを避ける
