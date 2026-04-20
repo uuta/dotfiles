@@ -125,6 +125,8 @@ cask "codex-app"
 cask "claudebar"
 cask "ovice"
 cask "android-commandlinetools"
+cask "nani"
+cask "slack-cli"
 
 # WezTerm
 tap "wez/wezterm"
