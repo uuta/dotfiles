@@ -199,8 +199,8 @@ alias cdh='cd ~/dotfiles/.hammerspoon'
 alias cdb='cd ~/astro-blog'
 
 ## mfw
-alias cdo='cd ~/mfx_banking_app-develop_yokoshin2.0'
-alias cdom='cd ~/mfx_banking_app-develop_yokoshin2.0/main'
+alias cdo='cd ~/mfx_banking_app'
+alias cdom='cd ~/mfx_banking_app/main'
 
 # Enliminal
 alias cde='cd ~/enliminal'
