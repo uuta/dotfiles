@@ -176,6 +176,7 @@ alias cds='cd ~/socialdog/web'
 ## Trander
 alias cdt='cd ~/trander'
 alias cdf='cd ~/trander-flutter'
+alias cdfm='cd ~/trander-flutter/master'
 alias cdr='cd ~/trander-rust'
 
 ## WezTerm
