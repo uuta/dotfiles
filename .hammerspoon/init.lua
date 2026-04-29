@@ -20,6 +20,7 @@ local keys = {
   { { "ctrl" }, "space", "Ghostty" },
   { { "ctrl" }, ",",     "Cursor" },
   { { "ctrl" }, "9",     "Kindle" },
+  { { "ctrl" }, "I",     "cmux" },
 }
 
 for _, key in ipairs(keys) do
