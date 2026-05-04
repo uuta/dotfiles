@@ -1,6 +1,6 @@
 ---
 name: pbi-task-split
-description: PBI（Product Backlog Item）をレイヤー別に分割し、並列実施可能なタスクを特定する。boundary / contract タスク、共通化すべき部品の洗い出し、依存関係の整理、クリーンアップ計画まで含む。
+description: PBI（Product Backlog Item）をレイヤー別に分割し、並列実施可能なタスクを特定する。boundary / contract タスク、共通化すべき部品の洗い出し、依存関係の整理、クリーンアップ計画まで含む。スクリーンショットや理想UI画像を含むPBIでは visual-ui-contract を使って draft UI / visual regression gate を先行タスクとして切る。
 ---
 
 # PBI Task Split
@@ -32,6 +32,16 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、boundary
   - sequence diagram や request examples の作成
   - OpenAPI / Swagger / interface / typed client contract の更新
 - **重要**: interface が曖昧なまま並列実装に入らない。ズレや再実装コストが高い場合、boundary タスクを独立 issue にする。
+
+### 3.5 visual UI contract の有無を判定
+- 親 Issue / PBI に screenshot、mockup、ideal image、visual fidelity、UI polish、golden / screenshot test の要求がある場合は `visual-ui-contract` を使う。
+- その場合、実装タスクの前に **Visual shell / draft UI component + visual regression gate** タスクを切る。
+- この先行タスクは mock data で理想UIに近い component composition を作り、golden / screenshot / component-level visual test を追加する。
+- component の分割と draft UI を分けると後続 agent が別UIを組み立てられる場合は、同じ先行タスクにまとめる。
+- data model、URL builder、action service、provider seam、test helper など visual layout を触らないタスクはこの先行タスクと並列可にしてよい。
+- real flow への mount / provider integration は visual shell タスクに依存させる。
+- old modal / wrapper / legacy UI の削除は replacement UI が mount され visual gate が通った後の cleanup に置く。
+- visual test が fail した場合、agent は baseline / threshold / selector / expectation を変更して通してはいけない。実装を直す。baseline 更新は user approval required と明記する。
 
 ### 4. 共通化すべき部品の特定
 - 特定機能に配置されているが汎用的なコンポーネントを洗い出し
@@ -125,6 +135,10 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、boundary
 **並列実施可能:**
 - {並列可能なタスクの説明}
 
+**Visual UI PBI の場合:**
+- `Visual shell / draft UI + visual gate` → `Integration` → `Cleanup`
+- non-visual service/model/action tasks は visual baseline を触らない条件で並列可
+
 ---
 
 ## 参考ファイルパス
@@ -142,6 +156,9 @@ PBIを実装可能なタスクに分割する。レイヤー別分割、boundary
 ## 観点チェックリスト
 
 - [ ] boundary / contract を先に切るべきPBIか判定したか
+- [ ] screenshot / ideal UI / visual fidelity がある場合、`visual-ui-contract` を使ったか
+- [ ] visual shell / draft UI + visual regression gate を integration より前に配置したか
+- [ ] visual baseline / threshold / selector を agent が勝手に更新しないルールを書いたか
 - [ ] 並列実装前の source of truth を明示したか
 - [ ] レイヤー別に分割されているか
 - [ ] 1タスク1機能になっているか

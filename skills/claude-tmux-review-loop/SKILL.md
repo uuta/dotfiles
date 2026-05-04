@@ -104,6 +104,7 @@ review contract には最低限次を含める。
 - not done if
 - required verification
 - hard blockers / external prerequisites
+- visual contract, approved reference image, and golden/screenshot baseline integrity rules when the task is screenshot-driven UI
 
 contract が曖昧なままなら Claude に投げ切らず、ここでユーザーに確認する。
 
@@ -184,6 +185,14 @@ review 結果は必ず次の 3 分類のどれかに落とす。
 
 `clean` 判定は「コード差分がもっともらしい」ではなく、review contract の `Done when` を満たし、`Not done if` のどれにも当たらないことを意味する。特に runtime / native / external-config issue では、docs で未実施の external setup を列挙しただけなら通常 `clean` ではない。
 
+screenshot-driven UI task では、コード差分だけで `clean` にしない。次を確認する。
+
+- visual/golden/screenshot test または明示された visual evidence がある
+- approved reference image の visual invariants を外していない
+- golden image、snapshot baseline、threshold、selector、visual expectation を user approval なしに変更していない
+- visual test failure を test 側の期待値変更で回避していない
+- screenshot capture が不可能な場合、それが blocker か accepted deferral として issue/review contract に書かれている
+
 ### 5. Branch On Review Result
 
 #### clean
@@ -227,6 +236,7 @@ Re-check the original success gates for this task:
 - Done when: <...>
 - Not done if: <...>
 - Hard blockers: <...>
+- Visual contract rules if applicable: do not change golden images, snapshots, screenshot baselines, thresholds, selectors, or visual expectations without explicit user approval; fix implementation when visual tests fail; stop and ask if the approved baseline seems obsolete.
 
 Please fix only the findings above in <worktree_path>.
 Keep scope tight to the current issue/task.

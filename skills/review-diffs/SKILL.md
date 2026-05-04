@@ -55,6 +55,7 @@ Write a short contract to `docs/review/contract.md` with:
 - explicit out-of-scope boundaries
 - accepted deferrals or known caveats
 - review range being inspected
+- visual contract / approved reference image / golden or screenshot baseline rules when the diff is screenshot-driven UI
 
 Example skeleton:
 
@@ -73,6 +74,15 @@ Example skeleton:
 This step is mandatory. Do not spawn reviewers before the contract exists.
 
 The contract must live inside the current worktree so review state stays issue-scoped and inspectable later.
+
+If the issue includes screenshot/mockup/ideal-image visual requirements, the contract must also state:
+
+- the approved visual source
+- the visual invariants being protected
+- whether a visual shell / draft UI task should already exist
+- which golden/screenshot/component visual tests are binding
+- that baselines, thresholds, selectors, and visual expectations may not be changed without user approval
+- what screenshot/golden evidence is required for review clean
 
 ## 2. Capture the diff
 
@@ -144,6 +154,7 @@ Focus on:
 - old behavior that should have been removed or redirected
 - scope creep that solves the wrong problem
 - known caveats that should be documented but are missing
+- for screenshot-driven UI, missing visual evidence, weakened golden/screenshot tests, or drift from the approved visual contract
 
 Do not spend time on generic style or speculative refactors.
 
@@ -256,6 +267,7 @@ The manager pass must answer:
 - Does the diff satisfy the intended issue direction?
 - Is any required behavior still missing?
 - Are any reviewers flagging problems that are outside the agreed scope?
+- For screenshot-driven UI, did the implementation preserve the visual contract and avoid unauthorized baseline/threshold/selector changes?
 
 ## 8. Summarize to the user
 

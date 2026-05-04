@@ -1,0 +1,4 @@
+interface:
+  display_name: "Visual UI Contract"
+  short_description: "Guard screenshot-driven UI work."
+  default_prompt: "Use this for screenshot-driven UI tasks that need visual contracts, golden/screenshot tests, and baseline integrity rules."

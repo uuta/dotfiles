@@ -1,6 +1,6 @@
 ---
 name: pbi-sub-issue
-description: タスク分割プラン（pbi-task-splitで作成）を元に、GitHub の Sub-issue を作成する。親 Issue との関係も自動で設定。
+description: タスク分割プラン（pbi-task-splitで作成）を元に、GitHub の Sub-issue を作成する。親 Issue との関係も自動で設定。visual UI PBI では pbi-task-split の visual shell / visual gate / integration / cleanup の順序と依存関係を崩さず作成する。
 ---
 
 # PBI Sub-issue Creator
@@ -33,6 +33,15 @@ gh issue view <親Issue番号> --repo <owner>/<repo>
   - タスク名
   - 対象ファイル
   - 作業内容
+  - 依存関係と実行順序
+
+visual UI PBI の場合:
+
+- `Visual shell / draft UI + visual regression gate` タスクを integration / cleanup より先に作成する。
+- non-visual parallel tasks は依存なしで作成してよいが、body に「visual baseline / threshold / selector を変更しない」と明記する。
+- integration task には visual shell task の issue 番号を依存として入れる。
+- cleanup task には integration task の issue 番号を依存として入れる。
+- golden / screenshot baseline を変更するタスクを作る場合は、user approval required と明記する。
 
 ### 3. Sub-issue の作成（各タスクごと）
 
@@ -124,6 +133,7 @@ gh sub-issue add 1324 --sub-issue-number $ISSUE_NUM
 
 ## 備考
 - 独立して実施可能 / 検討中 等
+- visual UI task の場合: golden / screenshot baseline、threshold、selector、visual expectation は user approval なしに変更しない
 
 ## 参考
 - `path/to/reference`

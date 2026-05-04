@@ -1,6 +1,6 @@
 ---
 name: worktree-env
-description: Link or copy ignored env-like files into a git worktree from a source checkout or secrets directory using a tracked manifest such as `docs/env-paths.txt`. Use when a worktree needs local runtime config to run, build, or test, but do not use by default for every worktree.
+description: Copy or link ignored env-like files into a git worktree from a source checkout or secrets directory using a tracked manifest such as `docs/env-paths.txt`. Use for worktree bootstrap when a repo declares local runtime/build config paths, especially after `agent-workspace` creates or reuses an issue worktree.
 allowed-tools: Bash(git:*), Bash(rg:*), Bash(ls:*), Bash(find:*), Bash(mkdir:*), Bash(ln:*), Bash(cp:*), Bash(rm:*), Bash(readlink:*)
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Bash(git:*), Bash(rg:*), Bash(ls:*), Bash(find:*), Bash(mkdir:*),
 
 ## Purpose
 
-Bootstrap ignored local config files into a worktree without mixing that concern into workspace creation or tmux assignment.
+Bootstrap ignored local config files into a worktree from a manifest.
 
 This skill is generic. It is not Flutter-specific.
 
@@ -18,7 +18,6 @@ Use it when:
 - you want a reproducible way to link or copy those files into a worktree
 
 Do not use it when:
-- the task is edit-only and does not need local secrets or runtime config
 - the repo has no tracked manifest yet
 - the user explicitly wants a different local-config mechanism
 
@@ -42,6 +41,9 @@ Example:
 ```text
 # Android / native build
 .env
+.env.dev
+.env.stg
+.env.prod
 
 # Runtime env files
 assets/.env.dev
@@ -51,10 +53,11 @@ assets/.env.prod
 
 ## Default behavior
 
-- Prefer symlinks
-- Use copy only when the user asks for copy semantics or symlinks are unsuitable
+- For agent-created worktrees, prefer `--mode copy --force` so agents get a
+  self-contained snapshot of local config and do not mutate the source checkout
 - Keep the source of truth outside the worktree
 - Do not infer the required file list from search results alone
+- Never create empty placeholder env files when a manifest source is missing
 
 ## Procedure
 
@@ -89,25 +92,32 @@ If the manifest does not exist, stop and ask whether to create it. Do not silent
 Use the bundled script:
 
 ```bash
-scripts/link-manifest.sh --source <source_root> --target <target_root>
+scripts/link-manifest.sh --source <source_root> --target <target_root> --mode copy --force
 ```
 
 Useful variants:
 
 ```bash
 scripts/link-manifest.sh --source <source_root> --target <target_root> --mode check
-scripts/link-manifest.sh --source <source_root> --target <target_root> --mode copy
+scripts/link-manifest.sh --source <source_root> --target <target_root>
 scripts/link-manifest.sh --source <source_root> --target <target_root> --force
 scripts/link-manifest.sh --source <source_root> --target <target_root> --manifest <custom_manifest>
 ```
 
 ### 5. Verify
 
-Recommended checks:
+Required checks after agent-worktree bootstrap:
 
 ```bash
 scripts/link-manifest.sh --target <target_root> --mode check
 git -C <target_root> status --short --ignored
+```
+
+For Flutter apps using `flutter_dotenv`, also verify that asset env files are
+not zero-byte placeholders:
+
+```bash
+wc -c <target_root>/assets/.env.dev <target_root>/assets/.env.stg <target_root>/assets/.env.prod
 ```
 
 ### 6. Audit when needed
@@ -126,6 +136,7 @@ If audit shows a new required local file path, update `docs/env-paths.txt`.
 
 ## Notes
 
-- This skill should stay separate from `agent-workspace` and `claude-tmux-pm`
-- Those skills manage workspace and assignment; this one manages local config bootstrap
-- It is valid to skip this skill when a worktree does not need local env files
+- `agent-workspace` should call this skill automatically when a target worktree
+  contains `docs/env-paths.txt`
+- `claude-tmux-pm` should not assign runtime/native work to Claude until the
+  manifest check passes

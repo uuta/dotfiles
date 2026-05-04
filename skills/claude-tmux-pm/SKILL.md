@@ -1,6 +1,6 @@
 ---
 name: claude-tmux-pm
-description: tmux 上の Claude Code セッションに GitHub の sub-issue を順番に割り当てるスキル。親 Issue 配下の sub-issue を番号順に見て、最初の未対応タスクが `S` ラベルなら `feat/{issue_number}` ブランチの専用 worktree（basename は `<issue_number>`）で Claude Code に実装させる。workspace / worktree の配置規約は `agent-workspace` に従う。Claude は実装と検証まで行い、Codex が diff review してから commit / push / PR を行う。最初の未対応タスクが `M` または `L` の場合は通常は割り当てず、先に対応方針をユーザーと相談する。ただしユーザーが特定 issue について明示的に override した場合は、その issue に限って割り当ててよい。各実行の冒頭では、merge 済み PR に対応する専用 pane / window / worktree を安全に掃除する。「Claude Code に割り当てて」「tmux の Claude に投げて」「agent に issue を振って」などで使用。
+description: tmux 上の Claude Code セッションに GitHub の sub-issue を順番に割り当てるスキル。親 Issue 配下の sub-issue を番号順に見て、最初の未対応タスクが `S` ラベルなら `feat/{issue_number}` ブランチの専用 worktree（basename は issue number）で Claude Code に実装させる。workspace / worktree の配置規約は `agent-workspace` に従う。Claude は実装と検証まで行い、Codex が diff review してから commit / push / PR を行う。最初の未対応タスクが `M` または `L` の場合は通常は割り当てず、先に対応方針をユーザーと相談する。ただしユーザーが特定 issue について明示的に override した場合は、その issue に限って割り当ててよい。各実行の冒頭では、merge 済み PR に対応する専用 pane / window / worktree を安全に掃除する。「Claude Code に割り当てて」「tmux の Claude に投げて」「agent に issue を振って」などで使用。
 allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 ---
 
@@ -9,6 +9,7 @@ allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 ## Guardrails
 
 - workspace / worktree layout は `agent-workspace` の規約に従う
+- worktree 作成/再利用後、対象 repo に `docs/env-paths.txt` がある場合は、Claude に渡す前に `worktree-env` の manifest copy/check を必ず実行する
 - `S` ラベルの task だけを Claude Code に割り当てる
 - `M` / `L` は通常は割り当てない。ユーザーが特定 issue 番号を明示して override した場合だけ例外的に割り当ててよい
 - sub-issue は必ず番号の小さい順に扱う
@@ -26,6 +27,8 @@ allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 - issue 本文やコメントで仕様が明確になった場合、Claude に渡す前にその内容を sub-issue に反映する。会話中の口頭合意だけで渡してはいけない
 - routing / UX flow / API contract を変える issue は特に厳格に扱う。既存 flow を置き換えるのか、追加するだけなのかが issue に書かれていなければ割り当ててはいけない
 - frontend route / island / hydration 変更では、実装後の verification に `build` と bundle 警告確認を含める。test/lint だけで完了扱いにしてはいけない
+- screenshot / mockup / ideal image / visual fidelity を含む UI issue では `visual-ui-contract` の gate を適用する。Claude に渡す前に visual baseline / screenshot / golden の扱いが issue に明記されていることを確認する
+- visual contract がある issue では、Claude に golden image、snapshot baseline、screenshot threshold、test selector、visual expectation を user approval なしに変更させない
 
 ## Implementation Contract Gate
 
@@ -41,6 +44,7 @@ Claude に実装を振る前に、対象 sub-issue が少なくとも次を持�
 - `not done` とみなす条件
 - 必須 verification（例: build, simulator, physical device, API call, migration）
 - local secrets / external service / dashboard setup が前提なのか、なければ blocker なのか
+- runtime / native build に必要な ignored env/local config が `docs/env-paths.txt` に書かれており、専用 worktree に copy/check 済みか
 
 以下のような change は、上の contract が欠けていると誤実装しやすい。
 
@@ -64,6 +68,15 @@ frontend page / island 系 issue では、可能なら次も明文化する。
 - どの部分が server-rendered で、どの部分だけ hydrate するか
 - 重い dependency を lazy load する必要があるか
 - build 時に bundle / chunk size を確認すること
+
+screenshot / ideal UI / visual fidelity 系 issue では、次も明文化する。
+
+- approved reference image / mockup はどれか
+- 守るべき visual invariants は何か（layout、spacing、typography、button placement、sheet height、background treatment など）
+- visual shell / draft UI task に依存しているか、またはこの issue 自体がそれを作る task か
+- golden / screenshot / component-level visual test は何か
+- visual baseline / threshold / selector / expectation の変更は user approval required か
+- 実装後に screenshot / golden evidence を提出できるか。できない場合は blocker / accepted deferral のどちらか
 
 runtime / native / external-config 依存の強い issue では、特に次を曖昧にしない。
 
@@ -182,6 +195,38 @@ git -C <workspace_root>/main worktree add -b feat/<issue_number> <workspace_root
 - すでに `feat/<issue_number>` の worktree（basename は `<issue_number>`） があるならそれを再利用してよい
 - 既存 branch / remote branch がある場合は、その branch を正しく checkout した worktree を使う
 
+### 3.5 ignored env/local config を worktree に copy する
+
+対象 worktree に `docs/env-paths.txt` が存在する場合は、Claude に渡す前に
+`worktree-env` の manifest copy/check を実行する。これは optional ではない。
+
+例:
+
+```bash
+/Users/yutaaoki/dotfiles/skills/worktree-env/scripts/link-manifest.sh \
+  --source <workspace_root>/main \
+  --target <workspace_root>/.worktrees/<issue_number> \
+  --mode copy \
+  --force
+
+/Users/yutaaoki/dotfiles/skills/worktree-env/scripts/link-manifest.sh \
+  --target <workspace_root>/.worktrees/<issue_number> \
+  --mode check
+```
+
+Flutter / native build / runtime config が絡む repo では、空ファイルを
+「存在する」と扱ってはいけない。例えば `flutter_dotenv` で `assets/.env.*`
+を読む repo では、次のようにサイズも確認する:
+
+```bash
+wc -c <workspace_root>/.worktrees/<issue_number>/assets/.env.dev \
+      <workspace_root>/.worktrees/<issue_number>/assets/.env.stg \
+      <workspace_root>/.worktrees/<issue_number>/assets/.env.prod
+```
+
+manifest があるのに source 側の file が欠けている、または check が通らない
+場合は assignment を止める。Claude に「あとで env copy して」と丸投げしない。
+
 ### 4. Claude Code pane を探す
 
 ```bash
@@ -225,6 +270,7 @@ tmux select-pane -t <target> -T 'issue-<issue_number>'
 複数行 prompt として送る。最低限、次の情報を含める:
 
 - worktree path
+- env manifest copy/check の結果（manifest がある場合）
 - issue number / title / URL
 - ブランチ名 `feat/{issue_number}`
 - 親 Issue の番号 / title / URL
@@ -234,6 +280,7 @@ tmux select-pane -t <target> -T 'issue-<issue_number>'
 - `Done when` / `Not done if` / `Hard blockers` を success criteria として扱うこと
 - 実装後は commit / push / PR をせず停止し、diff と検証結果を要約すること
 - frontend route / island / hydration 変更では `build` 結果と chunk 警告の有無も要約すること
+- visual contract がある UI issue では、visual/golden/screenshot test を実行し、baseline / threshold / selector / expectation を変更していないことを要約すること
 - ブロック時は停止して状況を要約すること
 
 推奨テンプレート:
@@ -283,6 +330,14 @@ Not done if:
 
 Hard blockers:
 - <missing secrets / dashboards / device verification / external setup that must be surfaced instead of guessed away>
+
+Visual contract rules (include only for screenshot-driven UI issues):
+- The approved screenshot/mockup is a binding UI contract.
+- Preserve layout, spacing, typography weight, button placement, sheet height, background treatment, and removed legacy UI noted in the issue.
+- If visual tests fail, fix implementation code.
+- Do not update golden images, snapshots, screenshot baselines, thresholds, test selectors, or visual expectations unless the user explicitly approves a baseline change.
+- If the visual baseline seems obsolete, stop and ask.
+- Provide captured screenshot/golden evidence or explain why capture is blocked.
 
 Suggested start:
 cd <worktree_path>
