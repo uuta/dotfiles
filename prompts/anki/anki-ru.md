@@ -73,7 +73,7 @@ When you input English or Japanese text, I will provide:
 ## Audio Generation
 
 For all Russian inputs, I will generate audio using the speech synthesis API:
-- Endpoint: https://langup-prod.onrender.com/generate-speech/
+- Endpoint: http://localhost:10000/generate-speech/
 - **Method: POST request only** (NOT GET - will fail with 405 error)
 - **Tool: Use Bash with curl** (NOT WebFetch - WebFetch only does GET requests)
 - Language: ru-RU
@@ -81,7 +81,7 @@ For all Russian inputs, I will generate audio using the speech synthesis API:
 
 ### Required curl command format:
 ```bash
-curl -X POST https://langup-prod.onrender.com/generate-speech/ \
+curl -X POST http://localhost:10000/generate-speech/ \
   -H "Content-Type: application/json" \
   -d '{"text": "слово", "lang_code": "ru-RU"}' \
   -s
