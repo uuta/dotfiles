@@ -1,0 +1,4 @@
+interface:
+  display_name: "Existing Code First"
+  short_description: "Search existing code before adding new implementations."
+  default_prompt: "Before implementing, search the repository for existing equivalent or similar code and prefer reuse, extension, or consolidation over creating parallel implementations."
