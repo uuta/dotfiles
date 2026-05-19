@@ -1,0 +1,4 @@
+interface:
+  display_name: "Component Extraction"
+  short_description: "Extract repeated UI into presentational domain components."
+  default_prompt: "Use component-extraction to inspect repeated UI, decide whether a domain component should be extracted, and keep state management in callers."
