@@ -1,0 +1,4 @@
+interface:
+  display_name: "Notion Tmux Executor"
+  short_description: "Route Notion writes to tmux executor"
+  default_prompt: "Route this Notion request through the dedicated tmux executor using Markdown content, a unique run directory, safe write confirmation, and before/after verification."
