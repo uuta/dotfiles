@@ -17,7 +17,16 @@
         "hooks": [
           {
             "type": "command",
-            "command": "afplay ~/Library/CloudStorage/Dropbox/20260115_zunda/zunda.wav"
+            "command": "afplay ~/dotfiles/public/ask.wav"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
           }
         ]
       }
@@ -27,7 +36,45 @@
         "hooks": [
           {
             "type": "command",
-            "command": "afplay ~/Library/CloudStorage/Dropbox/20251126_zunda/zunda.wav"
+            "command": "afplay ~/dotfiles/public/stop.wav"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay ~/dotfiles/public/start.wav"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay ~/dotfiles/public/start.wav"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
           }
         ]
       }
@@ -51,6 +98,15 @@
             "command": "bash ~/dotfiles/hooks/dev-workflow-guard.sh"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -62,6 +118,59 @@
             "timeout": 120
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/Users/yutaaoki/.nvm/versions/node/v22.20.0/bin/node\" \"/Users/yutaaoki/.claude/agent-flow/hook.js\"",
+            "timeout": 2
+          }
+        ]
       }
     ]
   },
@@ -70,6 +179,7 @@
     "figma@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "xhigh",
   "skipDangerousModePermissionPrompt": true,
-  "model": "sonnet"
+  "theme": "dark-daltonized"
 }
