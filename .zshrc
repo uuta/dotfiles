@@ -72,6 +72,10 @@ autoload -Uz _zinit
 
 ### End of Zinit's installer chunk
 
+if (( $+commands[mise] )); then
+  eval "$(mise activate zsh)"
+fi
+
 ### Color configuration
 export CLICOLOR=1
 export TERM=xterm-256color
@@ -258,6 +262,10 @@ alias tm-a='tmux attach -t'
 ## silicon
 alias sl='silicon --from-clipboard -l rs --to-clipboard'
 
+## pbcopy
+## with global aliases expand anywhere
+alias -g PB='| pbcopy'
+
 ### symlink the nvim folder when it doesn't exist yet
 if [ ! -e "$HOME/.config/nvim" ]; then
     ln -s "$HOME/dotfiles/.config/nvim" "$HOME/.config/nvim"
@@ -318,7 +326,7 @@ fi
 alias ls="ls -GF"
 alias gls="gls --color"
 
-alias f="fvm flutter"
+alias f="flutter"
 
 export LDFLAGS="-L/usr/local/opt/zlib/lib"
 export CPPFLAGS="-I/usr/local/opt/zlib/include"
