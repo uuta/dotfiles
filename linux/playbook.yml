@@ -1,0 +1,40 @@
+---
+- name: Configure Ubuntu development server
+  hosts: all
+  become: true
+
+  vars:
+    base_packages:
+      - build-essential
+      - curl
+      - fd-find
+      - fzf
+      - git
+      - neovim
+      - npm
+      - ripgrep
+      - tmux
+      - unzip
+      - zsh
+
+  tasks:
+    - name: Install base packages
+      ansible.builtin.apt:
+        name: "{{ base_packages }}"
+        state: present
+        update_cache: true
+
+    - name: Check Codex CLI
+      ansible.builtin.command: codex --version
+      register: codex_version
+      changed_when: false
+      failed_when: false
+
+    - name: Install Codex CLI
+      ansible.builtin.command: npm install -g @openai/codex
+      when: codex_version.rc != 0
+
+    - name: Use zsh for root
+      ansible.builtin.user:
+        name: root
+        shell: /usr/bin/zsh
