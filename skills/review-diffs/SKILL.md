@@ -111,6 +111,7 @@ Recommended output files:
 - `docs/review/correctness.md`
 - `docs/review/resilience.md`
 - `docs/review/security.md`
+- `docs/review/reuse.md`
 - `docs/review/manager.md`
 
 ## 4. Launch parallel tmux reviewers
@@ -120,7 +121,7 @@ Create dedicated tmux windows. Each runs Claude Code with `--dangerously-skip-pe
 Model / effort policy:
 
 - `review-req` uses `--model opus --effort high`. Requirement compliance needs the strongest judgment.
-- The other 3 specialist reviewers use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient default for parallel work.
+- The other 4 specialist reviewers use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient default for parallel work.
 - The manager pass (step 7) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / high when possible.
 
 ```bash
@@ -128,6 +129,7 @@ tmux new-window -n review-req -c "$(pwd)" 'claude --dangerously-skip-permissions
 tmux new-window -n review-correctness -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 tmux new-window -n review-resilience -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 tmux new-window -n review-security -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
+tmux new-window -n review-reuse -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 ```
 
 Wait for each window to become ready by polling `tmux capture-pane` until the idle prompt appears.
@@ -230,6 +232,35 @@ Write to docs/review/security.md in the standard review format.
 If there are no findings, say "No issues found."
 ```
 
+### Agent 5: reuse / cohesion
+
+```text
+Read docs/review/contract.md first, then docs/review/diff.txt.
+
+Review for comprehension debt, missed reuse, parallel implementations, responsibility drift, and unnecessary helper extraction.
+
+Focus on:
+- new helpers, functions, classes, hooks, components, validators, constants, enums, routes, errors, fixtures, or test builders that duplicate an existing responsibility
+- local validation or authorization logic when a schema, guard, interceptor, decorator, domain validator, or shared helper already owns that behavior
+- direct SQL, direct API calls, direct file access, or direct service calls that bypass established repository/client/service conventions
+- new generic files such as `utils`, `helpers`, `common`, or `constants` when existing shared locations already exist
+- new methods extracted only once with unclear responsibility or names that hide rather than remove complexity
+- abstractions introduced before concrete variation exists
+- code that appears to have inspected only the nearby file while ignoring adjacent patterns in the same layer
+
+Prefer reuse, relocation, deletion, or consolidation over new abstraction.
+Recommend abstraction only when there are at least two concrete implementations with the same responsibility and a stable shared concept.
+
+Do not:
+- suggest generic DRY cleanup that is unrelated to the diff's behavioral responsibility
+- demand abstraction for one-off code
+- report duplication unless it creates a concrete maintenance, correctness, or consistency risk
+- fight the existing architecture just because a different general pattern exists
+
+Write to docs/review/reuse.md in the standard review format.
+If there are no findings, say "No issues found."
+```
+
 ## 6. Poll until all reviewers finish
 
 For each window, poll every 5 seconds:
@@ -292,6 +323,7 @@ tmux kill-window -t review-req
 tmux kill-window -t review-correctness
 tmux kill-window -t review-resilience
 tmux kill-window -t review-security
+tmux kill-window -t review-reuse
 ```
 
 ## Standard review format
