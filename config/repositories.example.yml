@@ -1,0 +1,27 @@
+# Local target repositories for the v0.1 agent runner.
+#
+# Each entry:
+#   full_name:       GitHub repo (owner/name)
+#   workspace_root:  absolute local path; main checkout and .worktrees/ live under it
+#   default_branch:  used to locate the main checkout (${workspace_root}/${default_branch})
+#   enabled:         whether the Launcher may operate on this repo (default: true)
+#
+# Required GitHub labels on each enabled repo:
+#   - status:ready        (issue is ready for the Launcher to pick up)
+#   - status:in-progress  (Launcher swaps to this after claim)
+
+repositories:
+  - full_name: your-org/trander-flutter
+    workspace_root: /Users/your-name/trander-flutter
+    default_branch: master
+    enabled: true
+
+  - full_name: your-org/trander-rust
+    workspace_root: /Users/your-name/trander-rust
+    default_branch: main
+    enabled: true
+
+  - full_name: your-org/u
+    workspace_root: /Users/your-name/u
+    default_branch: main
+    enabled: false
