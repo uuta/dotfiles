@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tempfile
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple
 
@@ -63,7 +63,34 @@ def load_state(state_file: Path) -> Dict[str, WindowState]:
             file=sys.stderr,
         )
         return {}
-    return {k: WindowState(**v) for k, v in raw.items()}
+    if not isinstance(raw, dict):
+        print(
+            f"WARN: watchdog state file {state_file} has invalid root schema; "
+            f"resetting to empty",
+            file=sys.stderr,
+        )
+        return {}
+
+    allowed_fields = {f.name for f in fields(WindowState)}
+    state: Dict[str, WindowState] = {}
+    for k, v in raw.items():
+        if not isinstance(v, dict):
+            print(
+                f"WARN: watchdog state entry {k!r} in {state_file} has invalid "
+                f"schema; skipping",
+                file=sys.stderr,
+            )
+            continue
+        filtered = {name: value for name, value in v.items() if name in allowed_fields}
+        try:
+            state[k] = WindowState(**filtered)
+        except TypeError as e:
+            print(
+                f"WARN: watchdog state entry {k!r} in {state_file} is invalid "
+                f"({e}); skipping",
+                file=sys.stderr,
+            )
+    return state
 
 
 def save_state(state_file: Path, state: Dict[str, WindowState]) -> None:

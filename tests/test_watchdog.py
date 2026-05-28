@@ -270,6 +270,34 @@ class TestLoadStateCorruption(unittest.TestCase):
             again = load_state(f)
             self.assertEqual(again["u-9"].last_hash, "h")
 
+    def test_root_not_dict_returns_empty(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "w.json"
+            f.write_text('["u-5"]', encoding="utf-8")
+            self.assertEqual(load_state(f), {})
+
+    def test_value_not_dict_is_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "w.json"
+            f.write_text(
+                '{"u-5": {"last_hash": "ok"}, "u-6": "bad"}',
+                encoding="utf-8",
+            )
+            state = load_state(f)
+            self.assertEqual(sorted(state), ["u-5"])
+            self.assertEqual(state["u-5"].last_hash, "ok")
+
+    def test_unknown_fields_are_ignored(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / "w.json"
+            f.write_text(
+                '{"u-5": {"last_hash": "ok", "future_field": "kept out"}}',
+                encoding="utf-8",
+            )
+            state = load_state(f)
+            self.assertEqual(state["u-5"].last_hash, "ok")
+            self.assertFalse(hasattr(state["u-5"], "future_field"))
+
 
 class TestAtomicSaveState(unittest.TestCase):
     """Fix #4: save_state must be atomic and not leave temp files behind."""

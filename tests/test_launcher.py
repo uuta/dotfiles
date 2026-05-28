@@ -204,6 +204,19 @@ class TestClaimIssue(unittest.TestCase):
                 launcher.claim_issue(self.issue, dry_run=False)
 
 
+class TestListByLabel(unittest.TestCase):
+    def test_malformed_json_returns_empty_and_warns(self):
+        repo = RepoConfig("o/r", "/w/r", "main")
+        res = mock.Mock(returncode=0, stdout="{not json", stderr="")
+        with mock.patch("u_agents.launcher._run", return_value=res), \
+             mock.patch("sys.stderr") as stderr:
+            self.assertEqual(launcher._list_by_label(repo, LABEL_READY), [])
+
+        warning = "".join(call.args[0] for call in stderr.write.call_args_list)
+        self.assertIn("WARN: gh issue list returned malformed JSON", warning)
+        self.assertIn("o/r", warning)
+
+
 class TestClassifyDirectIssue(unittest.TestCase):
     def setUp(self):
         self.repo = RepoConfig("o/r", "/w/r", "main")

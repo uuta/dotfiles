@@ -101,7 +101,15 @@ def _list_by_label(repo: RepoConfig, label: str) -> List[Issue]:
         return []
     if not res.stdout.strip():
         return []
-    data = json.loads(res.stdout)
+    try:
+        data = json.loads(res.stdout)
+    except json.JSONDecodeError as e:
+        print(
+            f"WARN: gh issue list returned malformed JSON for "
+            f"{repo.full_name}: {e}",
+            file=sys.stderr,
+        )
+        return []
     out: List[Issue] = []
     for it in data:
         labels = [l.get("name", "") for l in it.get("labels", [])]
