@@ -19,3 +19,5 @@ ansible-playbook -i 'localhost,' -c local linux/playbook.yml
 ```
 
 The trailing comma in `localhost,` tells Ansible that this is an inline host list, not a file path.
+
+Claude Code and Codex authentication are intentionally manual/private. Put API keys in `~/.openai_key.zsh` or use each CLI's login flow on the server.

@@ -34,6 +34,16 @@
       ansible.builtin.command: npm install -g @openai/codex
       when: codex_version.rc != 0
 
+    - name: Check Claude Code
+      ansible.builtin.command: claude --version
+      register: claude_version
+      changed_when: false
+      failed_when: false
+
+    - name: Install Claude Code
+      ansible.builtin.command: npm install -g @anthropic-ai/claude-code
+      when: claude_version.rc != 0
+
     - name: Use zsh for root
       ansible.builtin.user:
         name: root
