@@ -22,8 +22,11 @@ Personal macOS development environment configuration.
 .claude/          Claude AI configuration
 .hammerspoon/     macOS automation
 agents/           Agent definitions
+u_agents/         Local tmux/GitHub agent runner
 skills/           Claude skills
 prompts/          Prompt templates
+examples/         Example local service definitions
+tests/            Tests for local tooling
 gh/               GitHub CLI extensions
 hooks/            Dev workflow hooks
 docs/             Documentation
