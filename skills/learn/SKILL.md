@@ -1,6 +1,6 @@
 ---
 name: learn
-description: AI-Driven Learning Assistant. Structured learning based on Plan → Learn → Practice → Track methodology. Stores curricula and lessons in ~/uuta/Learning/{topic}/.
+description: AI-Driven Learning Assistant. Structured learning based on Plan → Learn → Practice → Track methodology. Stores everything for a topic in a single ~/uuta/Learning/{topic}/curriculum.md page.
 user_invocable: true
 ---
 # AI-Driven Learning Assistant
@@ -9,14 +9,16 @@ user_invocable: true
 
 A structured learning skill based on the 4-step methodology: **Plan → Learn → Practice → Track**. Use AI as a *learning designer* — to create curricula, produce hands-on teaching materials, do peer-style review, and maintain progress visibility.
 
-All learning files are saved to the Obsidian vault at `~/uuta/Learning/{topic}/`.
+All learning content for a topic lives in **one single file** at `~/uuta/Learning/{topic}/curriculum.md`. The curriculum overview, every lesson, every self-check quiz, and every review result are sections within that one page — so the learner can scroll through everything in one place.
+
+**Scope: foundational knowledge only.** This skill exists so the learner can quickly acquire a topic's *basics* — not a comprehensive reference. Keep curricula short (3–4 modules), keep each lesson tight (the minimum needed to grasp the core idea), and resist the urge to cover edge cases, advanced topics, or exhaustive APIs. If the learner wants depth later, they can run `/learn plan` again with a more specific sub-topic.
 
 ## Usage
 
 ```
-/learn plan <topic>    # Create a new learning curriculum
+/learn plan <topic>    # Create a new learning curriculum (one consolidated page)
 /learn <topic>         # Start or continue learning a topic
-/learn lesson          # Generate the next lesson for the current topic
+/learn lesson          # Regenerate or fill in a missing lesson section
 /learn review          # Peer-review your submitted practice work
 /learn track           # Show TODO progress checklist
 /learn まとめ           # Session summary
@@ -29,111 +31,37 @@ All learning files are saved to the Obsidian vault at `~/uuta/Learning/{topic}/`
 ```
 ~/uuta/Learning/
   {topic}/
-    curriculum.md      # Structured learning plan with TODO checklist
-    lesson-01.md       # Lesson 1 content + quiz
-    lesson-02.md       # Lesson 2 content + quiz
-    ...
+    curriculum.md      # Single page: overview + TODO + all lessons + all quizzes + all reviews
 ```
 
-Use the Write tool or Bash to create and update files in `~/uuta/Learning/`.
+Use the Write/Edit tool or Bash to create and update this file in `~/uuta/Learning/{topic}/`.
 
 ---
 
-## Behavior by Mode
+## Single-Page Document Structure
 
-### `/learn plan <topic>`
+`curriculum.md` is the **only** file. It is organized as:
 
-**Goal**: Create a structured curriculum and generate all lesson files at once.
-
-Steps:
-0. **Fetch current information** for the topic before designing the curriculum:
-   a. Use WebSearch to find: "{topic} latest features", "{topic} official documentation",
-      "{topic} best practices {current year}", "{topic} release notes"
-   b. Use WebFetch to retrieve key pages (official docs, release notes, changelog)
-   c. Summarize key findings: new APIs, deprecated patterns, current idioms, version-specific features
-   d. Use this research to inform all subsequent curriculum and lesson decisions
-      — do NOT rely solely on training data for topic knowledge
-1. Research the topic: identify official documentation, key concepts, and common learning pitfalls.
-2. Divide the curriculum into **5–8 numbered modules**. Each module must include:
-   - **Objective**: What the learner will be able to do after completing this module
-   - **Key Concepts**: 3–5 core ideas to understand
-   - **Estimated Time**: Realistic time estimate
-3. Format the curriculum as a markdown TODO checklist (each module is a `- [ ]` item).
-4. Save to `~/uuta/Learning/{topic}/curriculum.md`.
-5. Generate all lesson files in parallel using a Team:
-   a. Call TeamCreate to create a team (e.g., team name: "lesson-gen-{topic}").
-   b. For each module in the curriculum, spawn one Task agent (subagent_type: general-purpose)
-      with a prompt that includes:
-        - The topic name and lesson number (N)
-        - The module's title, objective, key concepts, exercises, and estimated time
-        - The full lesson-XX.md format template (from this file)
-        - The exact save path: ~/uuta/Learning/{topic}/lesson-{N:02d}.md
-        - Instruction: generate the lesson content and save it using the Write tool
-      Launch all agents in a single message (parallel tool calls).
-   c. Wait for all agents to complete (they will send messages back when done).
-   d. Call TeamDelete to clean up the team.
-   e. Print a summary listing all lesson files created.
-6. Print a summary: curriculum overview + list of all lesson files created.
-
-**curriculum.md format**:
 ```markdown
 # {Topic} Learning Curriculum
 
 ## Overview
 Brief description of what you will learn and why it matters.
 
-## Curriculum
-
-- [ ] **Module 1: {Title}**
-  - Objective: ...
-  - Key Concepts: concept1, concept2, concept3
-  - Estimated Time: X hours
-
-- [ ] **Module 2: {Title}**
-  ...
+## Curriculum (TODO)
+- [ ] **Module 1: {Title}** — Objective: ... | Key Concepts: ... | Estimated Time: X hours
+- [ ] **Module 2: {Title}** — ...
+...
 
 ## References
 - [Official Docs](url)
 - [Key Resource](url)
-```
 
 ---
 
-### `/learn <topic>` (Start or Continue)
+# Lesson 1: {Module 1 Title}
 
-**Goal**: Resume a learning session for a topic, or start one if no curriculum exists.
-
-Steps:
-1. Check if `~/uuta/Learning/{topic}/curriculum.md` exists.
-   - If **not**, run the `plan` flow automatically first.
-2. Read `curriculum.md` to identify the next incomplete lesson (`- [ ]`).
-3. Run the `lesson` flow for that module.
-
----
-
-### `/learn lesson`
-
-**Goal**: Generate (or regenerate) a lesson file for a specific module. Use this when a lesson file is missing or needs to be refreshed — `/learn plan` normally creates all lessons upfront.
-
-Steps:
-1. Read `~/uuta/Learning/{topic}/curriculum.md` to find the **first unchecked module** (`- [ ]`) without an existing lesson file, or the module the user specifies.
-2. Determine the lesson number `N` (count existing `lesson-XX.md` files + 1).
-3. Generate a detailed lesson file with:
-   - **Concept explanation** with clear, beginner-friendly prose
-   - **Concrete code examples** or worked examples (where applicable)
-   - **Common mistakes** to avoid
-4. Generate 3–5 quiz questions (following the Quiz Generation Rules) and embed a `## Self-Check Quiz` section directly into the lesson file.
-5. Save to `~/uuta/Learning/{topic}/lesson-{N:02d}.md`.
-6. Display the lesson content in the terminal.
-
-**lesson-XX.md format**:
-```markdown
-# Lesson {N}: {Module Title}
-
-**Module**: {Module title from curriculum}
-**Status**: In Progress
-
----
+**Status**: Not Started <!-- Not Started / In Progress / Complete -->
 
 ## Concepts
 
@@ -150,8 +78,6 @@ example
 ## Common Mistakes
 - Mistake 1: why it happens and how to avoid it
 - Mistake 2: ...
-
----
 
 ## Self-Check Quiz
 <!-- Complete these before running /learn review -->
@@ -173,38 +99,115 @@ A) ...  B) ...  C) ...  D) ...
 **My Answer**:
 <!-- Write your answer here (2–3 sentences) -->
 
----
-
 ## Review
 <!-- This section will be filled in by /learn review -->
+
+---
+
+# Lesson 2: {Module 2 Title}
+... (same structure) ...
+
+---
+
+# Lesson N: ...
 ```
+
+Each lesson is a top-level `# Lesson N: ...` heading separated by `---` rulers. This makes the file navigable in Obsidian's outline view.
+
+---
+
+## Behavior by Mode
+
+### `/learn plan <topic>`
+
+**Goal**: Create the consolidated curriculum page containing the overview, TODO checklist, and every lesson section in one file.
+
+Steps:
+0. **Fetch current information** for the topic before designing the curriculum:
+   a. Use WebSearch to find: "{topic} latest features", "{topic} official documentation",
+      "{topic} best practices {current year}", "{topic} release notes"
+   b. Use WebFetch to retrieve key pages (official docs, release notes, changelog)
+   c. Summarize key findings: new APIs, deprecated patterns, current idioms, version-specific features
+   d. Use this research to inform all subsequent curriculum and lesson decisions
+      — do NOT rely solely on training data for topic knowledge
+1. Research the topic: identify official documentation, key concepts, and common learning pitfalls.
+2. Divide the curriculum into **3–4 numbered modules** (hard cap: 4). Pick only the modules a beginner truly needs to grasp the fundamentals — skip advanced, optional, or "nice to know" material. Each module must include:
+   - **Objective**: What the learner will be able to do after completing this module (one sentence)
+   - **Key Concepts**: **2–3** core ideas (not more)
+   - **Estimated Time**: Realistic time estimate (target ≤ 30 min per module)
+3. Generate every lesson section in parallel using a Team, but **do not let any agent write to disk**:
+   a. Call TeamCreate to create a team (e.g., team name: "lesson-gen-{topic}").
+   b. For each module, spawn one Task agent (subagent_type: general-purpose) with a prompt that includes:
+        - The topic name and lesson number (N)
+        - The module's title, objective, key concepts, and estimated time
+        - The lesson section format template (the `# Lesson N: ...` block above)
+        - **Length budget**: keep the whole lesson under ~250 words (≈ 1 screen). Each Concept block ≤ 4 short sentences plus at most one tiny code example. Common Mistakes: max 2 bullets. Self-Check Quiz: exactly **3 questions** (one multiple choice, one fill-in-the-blank, one explain). No headings beyond the template.
+        - Instruction: **return the lesson markdown as the message body — DO NOT write any files**. Do not cover advanced features, performance tuning, or edge cases — basics only.
+      Launch all agents in a single message (parallel tool calls).
+   c. Wait for all agents to complete and collect each returned lesson markdown.
+   d. Call TeamDelete to clean up the team.
+4. Assemble the single `curriculum.md`:
+   - Top: title, Overview, Curriculum TODO checklist, References
+   - Then: each lesson section in order, separated by `---` rulers
+5. Write the assembled content **once** with the Write tool to `~/uuta/Learning/{topic}/curriculum.md`.
+6. Print a summary: curriculum overview + the list of lesson titles now living inside `curriculum.md`.
+
+**Important**: never create `lesson-01.md`, `lesson-02.md`, … as separate files. Everything goes into `curriculum.md`.
+
+---
+
+### `/learn <topic>` (Start or Continue)
+
+**Goal**: Resume a learning session for a topic, or start one if no curriculum exists.
+
+Steps:
+1. Check if `~/uuta/Learning/{topic}/curriculum.md` exists.
+   - If **not**, run the `plan` flow automatically first.
+2. Read `curriculum.md` to identify the next incomplete module (`- [ ]`) in the Curriculum TODO list.
+3. Scroll to the matching `# Lesson N: ...` section inside the same file and display it to the user.
+4. Remind the user: "Fill in your **My Answer** fields in the `## Self-Check Quiz` of Lesson N, then run `/learn review` (or `/learn review N`)."
+
+---
+
+### `/learn lesson`
+
+**Goal**: Regenerate or fill in a single lesson section inside `curriculum.md`. Normally `/learn plan` produces every section upfront — use this only when a section is missing or needs a refresh.
+
+Steps:
+1. Read `~/uuta/Learning/{topic}/curriculum.md` and find the first module that has no matching `# Lesson N: ...` section, or the module the user specifies.
+2. Determine the lesson number `N` from its position in the Curriculum TODO list.
+3. Generate the lesson markdown (Concepts, Common Mistakes, Self-Check Quiz with **exactly 3 questions** following the Quiz Generation Rules, empty Review section). Same length budget as `/learn plan`: under ~250 words total, basics only.
+4. Use the Edit tool to insert or replace that specific `# Lesson N: ...` section inside `curriculum.md`. Preserve every other section. Keep the `---` rulers between lessons.
+5. Display the regenerated section in the terminal.
 
 ---
 
 ### `/learn review`
 
-**Goal**: Peer-review the user's submitted practice work, run a quiz gate, and mark the lesson complete only after demonstrated understanding.
+**Goal**: Peer-review the user's submitted practice work for one lesson section, run a quiz gate, and mark that lesson complete only after demonstrated understanding.
 
 Steps:
-1. Instruct the user to fill in their answers directly in the `## Self-Check Quiz → **My Answer**` fields in the lesson file, then run `/learn review` again if they haven't done so yet.
-2. Read the current lesson file (`lesson-{N}.md`) — focus on **Key Concepts**, **Common Mistakes**, and **Self-Check Quiz**.
-3. Review the submitted work like a knowledgeable peer:
+1. Determine which lesson is being reviewed:
+   - If the user passed a number (`/learn review 3`), use that.
+   - Otherwise pick the first lesson section whose `**Status**:` is `In Progress`, or the first `- [ ]` module in the Curriculum TODO if none is in progress.
+2. Read the corresponding `# Lesson N: ...` section from `curriculum.md` — focus on **Concepts**, **Common Mistakes**, and **Self-Check Quiz**.
+3. If all `**My Answer**` fields in that section are still blank placeholders (`<!-- ... -->`), prompt the user to fill them in and stop.
+4. Review the submitted work like a knowledgeable peer:
    - **Correctness**: Are the answers correct? Point out errors with explanations.
    - **Best Practices**: Highlight idiomatic or better approaches.
    - **Improvements**: Suggest what could be done more cleanly or efficiently.
    - **Praise**: Acknowledge what was done well.
-4. **Evaluate the Self-Check Quiz**:
-   - Read the `## Self-Check Quiz` section from the lesson file.
-   - If all `**My Answer**` fields are still blank placeholders (`<!-- ... -->`), prompt the user to fill them in before continuing.
-   - If answers are present, evaluate them holistically. Skip generating new quiz questions — the pre-generated quiz in the file is authoritative.
-5. **Evaluate answers**:
-   - **Pass** (≥ 60% understanding, judged holistically): append review + quiz results to the lesson file, mark `- [x]` in curriculum.md.
-   - **Gaps found**: give targeted feedback on missed concepts. Ask the user: "Would you like to retry with new questions, or move on anyway?" If they retry, generate a new set of questions (one retry maximum). Save results either way.
-6. Print a motivating summary of the review and quiz outcome.
+5. **Evaluate the Self-Check Quiz** holistically using the pre-generated questions in the section — do not regenerate them.
+6. **Evaluate answers**:
+   - **Pass** (≥ 60% understanding): use the Edit tool to fill in the lesson's `## Review` section with the review + quiz results, change its `**Status**:` to `Complete`, and mark `- [x]` for the matching module in the top-of-file Curriculum TODO list.
+   - **Gaps found**: give targeted feedback. Ask: "Would you like to retry with new questions, or move on anyway?" If they retry, generate a new set of questions (one retry maximum), write the results into the `## Review` section either way.
+7. Print a motivating summary of the review and quiz outcome.
+
+**All edits stay inside `curriculum.md`** — do not create any sidecar files.
 
 ---
 
-**Review section format** (appended to lesson file):
+**Review section format** (written into the lesson's `## Review` block in `curriculum.md`):
 ```markdown
 ## Review
 
@@ -222,30 +225,14 @@ Steps:
 ### Next Steps
 {What to focus on in the next lesson}
 
-## Quiz Results
-
+### Quiz Results
 **Date**: YYYY-MM-DD
 **Score**: X/Y
 **Pass**: Yes / No (retried: Yes/No)
 
-### Q1 — Multiple Choice
-Question: ...
-Options: A) ... B) ... C) ... D) ...
-Your answer: ...
-Correct: ...
-Result: ✓ / ✗
-
-### Q2 — Fill in the Blank
-Question: ...
-Your answer: ...
-Correct: ...
-Result: ✓ / ✗
-
-### Q3 — Explain in Your Own Words
-Question: ...
-Your answer: ...
-Evaluation: ...
-Result: ✓ / ✗
+- Q1 (Multiple Choice) — Your answer: ... | Correct: ... | ✓ / ✗
+- Q2 (Fill in the Blank) — Your answer: ... | Correct: ... | ✓ / ✗
+- Q3 (Explain) — Your answer: ... | Evaluation: ... | ✓ / ✗
 
 ### Summary
 {Brief note on strengths and any concepts to revisit}
@@ -255,7 +242,7 @@ Result: ✓ / ✗
 
 ### Quiz Generation Rules
 
-- Draw questions directly from the lesson's **Key Concepts** and **Common Mistakes** sections.
+- Draw questions directly from the lesson's **Concepts** and **Common Mistakes** content.
 - Each quiz must include all 3 formats: multiple choice, fill in the blank, and explain in your own words.
 - Multiple choice distractors should test common misconceptions, not random wrong answers.
 - Fill-in-the-blank blanks should target critical syntax, keywords, or terminology.
@@ -276,7 +263,7 @@ Result: ✓ / ✗
 Steps:
 1. Ask the user which topic to track (or infer from context).
 2. Read `~/uuta/Learning/{topic}/curriculum.md`.
-3. Parse the TODO checklist and display:
+3. Parse the **Curriculum (TODO)** checklist at the top of the file and display:
    - Completed modules (`- [x]`) with a checkmark
    - Current module (first `- [ ]`) highlighted
    - Remaining count
@@ -289,19 +276,20 @@ Steps:
 **Goal**: Summarize everything covered in the current session.
 
 Steps:
-1. Review all lessons generated and reviewed in this session.
+1. Review the lesson sections that were generated or reviewed in this session (look at `## Review` blocks whose `**Reviewed**:` date is today).
 2. Produce a concise summary:
    - Topics covered
    - Key concepts learned
    - Insights from review feedback
-3. Optionally offer to save the summary as a note in `~/uuta/Learning/{topic}/session-summary.md`.
+3. Optionally offer to append the summary as a `## Session Summary — YYYY-MM-DD` block at the very bottom of `curriculum.md` (still one file, no sidecars).
 
 ---
 
 ## Important Notes
 
 - Always confirm the topic before operating on files.
-- When saving files, use the Write tool with the full absolute path (e.g., `/Users/yutaaoki/uuta/Learning/Swift/curriculum.md`).
+- When saving the file, use the Write tool with the full absolute path (e.g., `/Users/yutaaoki/uuta/Learning/Swift/curriculum.md`).
 - If `~/uuta/Learning/` does not exist, create it with `mkdir -p ~/uuta/Learning/{topic}`.
-- Lesson numbers are zero-padded to two digits: `lesson-01.md`, `lesson-02.md`, etc.
+- **One topic = one file.** Never split a topic across `lesson-01.md`, `lesson-02.md`, … — those existed in an older version of this skill and should not be created anymore. Use `## Lesson N: ...` sections inside `curriculum.md` instead.
 - Prefer official documentation as the primary learning reference.
+- When editing an existing `curriculum.md`, always use the Edit tool with enough surrounding context to target the exact lesson section — never rewrite the whole file unless `/learn plan` is being re-run from scratch.
