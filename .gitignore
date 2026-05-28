@@ -9,3 +9,10 @@
 .config/configstore/
 .config/github-copilot/
 test/node_modules/
+.worktrees/
+__pycache__/
+*.pyc
+
+# Local-only u-agents runner config (example is tracked in config/)
+config/repositories.yml
+config/repositories.yaml

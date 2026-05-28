@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  v0.1 launchd job for the PM Watchdog.
+
+  Uses the once flag so launchd owns the cadence. Do NOT use the long-loop
+  form here: if the python process gets stuck, launchd cannot detect a
+  stalled internal loop and the watchdog stops detecting stalls until
+  manual intervention. With the once flag, every tick is a fresh process.
+
+  Edit the four placeholder paths below before installing:
+    /opt/homebrew/bin/python3                            (homebrew default)
+    /Users/your-name/.config/u-agents/repositories.yml   (your config)
+    /Users/your-name/dotfiles                              (the dotfiles checkout)
+    /Users/your-name/Library/Logs/u-agents-watchdog.log  (log destination)
+
+  Install:
+    cp examples/launchd/local.u-agents.watchdog.plist ~/Library/LaunchAgents/
+    launchctl load   ~/Library/LaunchAgents/local.u-agents.watchdog.plist
+
+  See docs/u-agents.md ("Scheduling under launchd") for the full workflow.
+
+  Note: the include pane tail flag is NOT set here. Enable it only after
+  reading the sensitivity warning in docs/u-agents.md.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>local.u-agents.watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/python3</string>
+        <string>-m</string>
+        <string>u_agents.watchdog</string>
+        <string>--once</string>
+        <string>--config</string>
+        <string>/Users/your-name/.config/u-agents/repositories.yml</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/your-name/dotfiles</string>
+
+    <key>StartInterval</key>
+    <integer>60</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/your-name/Library/Logs/u-agents-watchdog.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/your-name/Library/Logs/u-agents-watchdog.log</string>
+</dict>
+</plist>
