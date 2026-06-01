@@ -1,4 +1,5 @@
 import argparse
+import os
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -6,7 +7,9 @@ from unittest import mock
 from u_agents.contract import LABEL_IN_PROGRESS, LABEL_READY, RepoConfig
 from u_agents import launcher
 from u_agents.launcher import (
+    DEFAULT_CONFIG_PATHS,
     DEFAULT_PROMPT_TEMPLATE,
+    PACKAGE_DIR,
     Issue,
     classify_direct_issue,
     dispatch_claim,
@@ -35,6 +38,49 @@ def _args(**overrides):
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
+
+
+class TestDefaultConfigPaths(unittest.TestCase):
+    def test_repo_local_paths_are_package_anchored(self):
+        # The first two defaults must point at the checked-out package's
+        # config directory, anchored to launcher.py rather than the CWD.
+        self.assertEqual(PACKAGE_DIR, Path(launcher.__file__).resolve().parent)
+        self.assertEqual(
+            DEFAULT_CONFIG_PATHS[:2],
+            [
+                PACKAGE_DIR / "config" / "repositories.yml",
+                PACKAGE_DIR / "config" / "repositories.yaml",
+            ],
+        )
+
+    def test_repo_local_paths_are_absolute(self):
+        for p in DEFAULT_CONFIG_PATHS[:2]:
+            self.assertTrue(p.is_absolute(), f"{p} should be absolute")
+
+    def test_compatibility_fallbacks_unchanged(self):
+        self.assertEqual(
+            DEFAULT_CONFIG_PATHS[2:],
+            [
+                Path.home() / ".config" / "u-agents" / "repositories.yml",
+                Path.home() / ".config" / "u-agents" / "repositories.yaml",
+            ],
+        )
+
+    def test_repo_local_paths_do_not_depend_on_cwd(self):
+        # Resolving the defaults from an unrelated working directory must
+        # not change them: they are anchored to the package, not the CWD.
+        orig = os.getcwd()
+        try:
+            os.chdir(os.path.dirname(orig) or "/")
+            self.assertEqual(
+                DEFAULT_CONFIG_PATHS[:2],
+                [
+                    PACKAGE_DIR / "config" / "repositories.yml",
+                    PACKAGE_DIR / "config" / "repositories.yaml",
+                ],
+            )
+        finally:
+            os.chdir(orig)
 
 
 class TestPickIssue(unittest.TestCase):

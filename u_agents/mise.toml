@@ -1,0 +1,20 @@
+# Task aliases for the u-agents runner.
+#
+# Run these from the u_agents/ directory (e.g. `mise run launcher-dry-run`).
+# Each task `cd ..` to the dotfiles checkout root first so that
+# `python3 -m u_agents.*` can import the package.
+
+[tasks.launcher-dry-run]
+run = "cd .. && python3 -m u_agents.launcher --dry-run"
+
+[tasks.launcher]
+run = "cd .. && python3 -m u_agents.launcher"
+
+[tasks.watchdog-dry-run]
+run = "cd .. && python3 -m u_agents.watchdog --once --dry-run"
+
+[tasks.watchdog]
+run = "cd .. && python3 -m u_agents.watchdog --once"
+
+[tasks.test]
+run = "cd .. && python3 -m unittest discover tests"

@@ -13,6 +13,7 @@ test/node_modules/
 __pycache__/
 *.pyc
 
-# Local-only u-agents runner config (example is tracked in config/)
-config/repositories.yml
-config/repositories.yaml
+# Local-only u-agents runner config/state (example is tracked)
+u_agents/config/repositories.yml
+u_agents/config/repositories.yaml
+u_agents/state/

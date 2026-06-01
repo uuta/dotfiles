@@ -12,7 +12,8 @@ source of truth. There is no ops DB, no daemon, no vector store.
 | Launcher   | `u_agents/launcher.py`          | Short-lived starter/resumer. Picks one ready issue and hands off PM. |
 | PM prompt  | `u_agents/prompts/pm.md`        | The contract sent into the PM pane. PM owns the per-issue workflow.  |
 | Watchdog   | `u_agents/watchdog.py`          | Detects stalled PM panes. Pings, then comments once if still stuck.  |
-| Config     | `config/repositories.yml`     | Local allowlist of repositories the Launcher may operate on.         |
+| Config     | `u_agents/config/repositories.yml` | Local allowlist of repositories the Launcher may operate on.     |
+| State      | `<dotfiles checkout>/u_agents/state/watchdog.json` | Local Watchdog runtime state.                       |
 
 ## Required tools
 
@@ -28,18 +29,25 @@ source of truth. There is no ops DB, no daemon, no vector store.
 Copy the example and edit:
 
 ```sh
-mkdir -p ~/.config/u-agents
-cp config/repositories.example.yml ~/.config/u-agents/repositories.yml
+mkdir -p u_agents/config
+cp u_agents/config/repositories.example.yml u_agents/config/repositories.yml
 ```
 
-Or keep the config in-repo at `config/repositories.yml` and pass `--config` explicitly.
+The local config file is intentionally ignored by git. The tracked example
+stays in `u_agents/config/repositories.example.yml`.
 
 Discovery order when `--config` is omitted:
 
-1. `./config/repositories.yml`
-2. `./config/repositories.yaml`
+1. `<u_agents package>/config/repositories.yml`
+2. `<u_agents package>/config/repositories.yaml`
 3. `~/.config/u-agents/repositories.yml`
 4. `~/.config/u-agents/repositories.yaml`
+
+The first two paths are anchored to the installed `u_agents` package
+directory (next to `launcher.py`), not the process working directory, so
+discovery works regardless of where the launcher is run from. The
+`~/.config/u-agents/` paths are compatibility fallbacks. New installs
+should use the `u_agents/config/` path inside the dotfiles checkout.
 
 Each entry:
 
@@ -77,6 +85,23 @@ These names are deterministic. Both Launcher and Watchdog reconstruct them
 from `(repo, issue_number)` — no shared state file needed.
 
 ## Commands
+
+From the `u_agents/` directory, `mise.toml` exposes short aliases for the
+launcher, watchdog, and test runs. Each task changes to the dotfiles
+checkout root first so `python3 -m u_agents.*` can import the package:
+
+```sh
+cd u_agents
+mise run launcher-dry-run   # python3 -m u_agents.launcher --dry-run
+mise run launcher           # python3 -m u_agents.launcher
+mise run watchdog-dry-run   # python3 -m u_agents.watchdog --once --dry-run
+mise run watchdog           # python3 -m u_agents.watchdog --once
+mise run test               # python3 -m unittest discover tests
+```
+
+Service-management commands (`doctor`/`install`/`start`/`status`/`stop`)
+are not implemented yet. Use the launchd setup below to schedule the
+launcher and watchdog.
 
 ### Launcher
 
@@ -147,11 +172,14 @@ Pane content is never posted unless `--include-pane-tail` is set; when set,
 the tail is HTML-escaped inside a `<pre>` block to neutralize Markdown
 fence-injection from captured output.
 
-State is persisted to `${XDG_STATE_HOME:-~/.local/state}/u-agents/watchdog.json`
-via an atomic `tempfile + os.replace` write, so a crash mid-write cannot
-corrupt the file. If the state file does become unreadable (manual edit,
-disk truncation), `load_state` warns and resets to empty instead of
-deadlocking the watchdog loop.
+State is persisted to `<dotfiles checkout>/u_agents/state/watchdog.json` by
+default, anchored to the installed `u_agents` package directory rather than
+the process current working directory. Override with `--state-dir` when you
+want a different runtime location. The state write uses atomic
+`tempfile + os.replace`, so a crash mid-write cannot corrupt the file.
+`u_agents/state/` is local runtime data and ignored by git. If the state
+file does become unreadable (manual edit, disk truncation), `load_state`
+warns and resets to empty instead of deadlocking the watchdog loop.
 
 Stalled-once-and-commented windows do not get re-commented until their pane
 output changes.
@@ -180,15 +208,15 @@ On macOS, prefer `launchd` over `cron`. Two example plists are tracked in
 
    ```sh
    /opt/homebrew/bin/python3 -m u_agents.launcher \
-     --config /Users/your-name/.config/u-agents/repositories.yml --dry-run
+     --config /Users/your-name/dotfiles/u_agents/config/repositories.yml --dry-run
 
    /opt/homebrew/bin/python3 -m u_agents.watchdog \
-     --config /Users/your-name/.config/u-agents/repositories.yml --once --dry-run
+     --config /Users/your-name/dotfiles/u_agents/config/repositories.yml --once --dry-run
    ```
 
 2. Edit the four placeholder paths in each plist:
    - `/opt/homebrew/bin/python3` — your python interpreter
-   - `/Users/your-name/.config/u-agents/repositories.yml` — your config
+   - `/Users/your-name/dotfiles/u_agents/config/repositories.yml` — your config
    - `/Users/your-name/dotfiles` — the dotfiles checkout (must contain `u_agents/`)
    - `/Users/your-name/Library/Logs/u-agents-*.log` — log destination
 
