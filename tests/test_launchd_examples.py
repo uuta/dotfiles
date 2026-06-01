@@ -14,6 +14,7 @@ from pathlib import Path
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples" / "launchd"
 LAUNCHER_PLIST = EXAMPLES / "local.u-agents.launcher.plist"
 WATCHDOG_PLIST = EXAMPLES / "local.u-agents.watchdog.plist"
+EXPECTED_CONFIG_PATH = "/Users/your-name/dotfiles/u_agents/config/repositories.yml"
 
 # Patterns that must NEVER appear in a tracked example.
 PERSONAL_PATTERNS = [
@@ -50,8 +51,7 @@ class TestLauncherPlist(unittest.TestCase):
         args = self.plist["ProgramArguments"]
         self.assertIn("--config", args)
         idx = args.index("--config")
-        self.assertTrue(args[idx + 1].endswith("repositories.yml"),
-                        f"--config target should end with repositories.yml, got: {args[idx + 1]}")
+        self.assertEqual(args[idx + 1], EXPECTED_CONFIG_PATH)
 
     def test_five_minute_interval(self):
         self.assertEqual(self.plist["StartInterval"], 300)
@@ -87,6 +87,12 @@ class TestWatchdogPlist(unittest.TestCase):
         args = self.plist["ProgramArguments"]
         self.assertIn("-m", args)
         self.assertIn("u_agents.watchdog", args)
+
+    def test_passes_config_flag(self):
+        args = self.plist["ProgramArguments"]
+        self.assertIn("--config", args)
+        idx = args.index("--config")
+        self.assertEqual(args[idx + 1], EXPECTED_CONFIG_PATH)
 
     def test_uses_once_flag(self):
         # Critical: launchd must own the cadence. The long-loop form is

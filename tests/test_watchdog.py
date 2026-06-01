@@ -2,13 +2,18 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from u_agents.contract import RepoConfig
+from u_agents import watchdog
 from u_agents.watchdog import (
+    DEFAULT_STATE_DIR,
+    DEFAULT_STATE_FILE,
     WindowState,
     build_stall_comment_body,
     check_once,
     load_state,
+    main as watchdog_main,
     save_state,
 )
 
@@ -20,6 +25,27 @@ class FakeClock:
     def __call__(self):
         self.t += 1.0
         return self.t
+
+
+class TestDefaultStatePath(unittest.TestCase):
+    def test_default_watchdog_state_lives_under_package_u_agents(self):
+        expected_state_dir = Path(watchdog.__file__).resolve().parent / "state"
+        self.assertTrue(DEFAULT_STATE_DIR.is_absolute())
+        self.assertEqual(DEFAULT_STATE_DIR, expected_state_dir)
+        self.assertEqual(DEFAULT_STATE_DIR / DEFAULT_STATE_FILE,
+                         expected_state_dir / "watchdog.json")
+
+    def test_default_watchdog_state_does_not_follow_process_cwd(self):
+        original_cwd = Path.cwd()
+        with tempfile.TemporaryDirectory() as d:
+            try:
+                os.chdir(d)
+                self.assertEqual(
+                    DEFAULT_STATE_DIR,
+                    Path(watchdog.__file__).resolve().parent / "state",
+                )
+            finally:
+                os.chdir(original_cwd)
 
 
 class TestStateRoundtrip(unittest.TestCase):
@@ -36,6 +62,25 @@ class TestStateRoundtrip(unittest.TestCase):
             self.assertEqual(got["u-5"].last_hash, "abc")
             self.assertEqual(got["u-5"].unchanged_checks, 2)
             self.assertTrue(got["u-5"].pinged)
+
+
+class TestWatchdogMainStateDir(unittest.TestCase):
+    def test_explicit_state_dir_is_respected(self):
+        with (
+            tempfile.TemporaryDirectory() as d,
+            mock.patch(
+                "u_agents.watchdog._resolve_config",
+                return_value=Path("/dev/null"),
+            ),
+            mock.patch("u_agents.watchdog.load_config", return_value=[]),
+            mock.patch("u_agents.watchdog.check_once") as check_once_mock,
+        ):
+            rc = watchdog_main(["--once", "--state-dir", d])
+
+        self.assertEqual(rc, 0)
+        check_once_mock.assert_called_once()
+        self.assertEqual(check_once_mock.call_args.args[1],
+                         Path(d) / DEFAULT_STATE_FILE)
 
 
 class TestCheckOnce(unittest.TestCase):

@@ -29,8 +29,8 @@ from u_agents.contract import (
     pm_pane_target,
 )
 
-_XDG_STATE = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local" / "state")))
-DEFAULT_STATE_DIR = _XDG_STATE / "u-agents"
+PACKAGE_DIR = Path(__file__).resolve().parent
+DEFAULT_STATE_DIR = PACKAGE_DIR / "state"
 DEFAULT_STATE_FILE = "watchdog.json"
 
 PING_TEXT = (

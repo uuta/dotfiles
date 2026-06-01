@@ -35,14 +35,16 @@ from u_agents.contract import (
     worktree_path,
 )
 
+PACKAGE_DIR = Path(__file__).resolve().parent
+
 DEFAULT_CONFIG_PATHS = [
-    Path("config/repositories.yml"),
-    Path("config/repositories.yaml"),
+    PACKAGE_DIR / "config" / "repositories.yml",
+    PACKAGE_DIR / "config" / "repositories.yaml",
     Path.home() / ".config" / "u-agents" / "repositories.yml",
     Path.home() / ".config" / "u-agents" / "repositories.yaml",
 ]
 
-DEFAULT_PROMPT_TEMPLATE = Path(__file__).parent / "prompts" / "pm.md"
+DEFAULT_PROMPT_TEMPLATE = PACKAGE_DIR / "prompts" / "pm.md"
 CLAUDE_COMMAND = os.environ.get("U_AGENTS_CLAUDE_COMMAND", "claude")
 CLAUDE_READY_TIMEOUT_SECONDS = 10.0
 CLAUDE_READY_POLL_SECONDS = 0.25
