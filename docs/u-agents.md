@@ -87,8 +87,9 @@ from `(repo, issue_number)` — no shared state file needed.
 ## Commands
 
 From the `u_agents/` directory, `mise.toml` exposes short aliases for the
-launcher, watchdog, and test runs. Each task changes to the dotfiles
-checkout root first so `python3 -m u_agents.*` can import the package:
+launcher, watchdog, and test runs. Each task sets `dir = ".."` so it runs
+from the dotfiles checkout root, where `python3 -m u_agents.*` can import
+the package:
 
 ```sh
 cd u_agents
