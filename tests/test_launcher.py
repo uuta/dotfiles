@@ -155,6 +155,12 @@ class TestClaudeTmuxGuard(unittest.TestCase):
         self.repo = RepoConfig("o/r", "/w/r", "main")
         self.issue = _mk_issue(self.repo, 5, labels=[LABEL_READY])
 
+    def test_default_claude_command_uses_bypass_permission_mode(self):
+        self.assertEqual(
+            launcher.CLAUDE_COMMAND,
+            "claude --permission-mode bypassPermissions",
+        )
+
     def test_new_window_starts_claude_command(self):
         with mock.patch("u_agents.launcher.ensure_session"), \
              mock.patch("u_agents.launcher.window_exists", return_value=False), \
@@ -176,6 +182,28 @@ class TestClaudeTmuxGuard(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 launcher.send_prompt("r-5", "hello", dry_run=False)
         m_tmux_in.assert_not_called()
+
+    def test_expected_claude_start_accepts_quoted_command_with_args(self):
+        with mock.patch("u_agents.launcher.CLAUDE_COMMAND",
+                        "claude --dangerously-skip-permissions"):
+            self.assertTrue(
+                launcher._is_expected_claude_start(
+                    '"claude --dangerously-skip-permissions"'
+                )
+            )
+
+    def test_send_prompt_submits_with_control_m(self):
+        with mock.patch("u_agents.launcher.wait_for_claude_ready"), \
+             mock.patch("u_agents.launcher._tmux_in"), \
+             mock.patch("u_agents.launcher._tmux") as m_tmux, \
+             mock.patch("u_agents.launcher.os.getpid", return_value=123):
+            launcher.send_prompt("r-5", "hello", dry_run=False)
+
+        m_tmux.assert_any_call(["paste-buffer", "-b", "u-agent-prompt-123",
+                                "-t", "agents:r-5.0"])
+        m_tmux.assert_any_call(["send-keys", "-t", "agents:r-5.0", "C-m"])
+        m_tmux.assert_any_call(["delete-buffer", "-b", "u-agent-prompt-123"],
+                               check=False)
 
     def test_wait_for_claude_ready_accepts_idle_prompt(self):
         with mock.patch("u_agents.launcher._pane_start_command",
@@ -199,6 +227,22 @@ class TestClaudeTmuxGuard(unittest.TestCase):
              mock.patch("u_agents.launcher._pane_is_dead", return_value=False), \
              mock.patch("u_agents.launcher._capture_pane",
                         return_value="Claude Code\n\n│ ❯\n"):
+            launcher.wait_for_claude_ready("r-5")
+
+    def test_wait_for_claude_ready_accepts_prompt_above_blank_status_tail(self):
+        capture = "\n".join([
+            "Claude Code",
+            "────────────────────────────────────────────────────────────────────────────────",
+            "❯ ",
+            "────────────────────────────────────────────────────────────────────────────────",
+            "  ? for shortcuts · ← for agents                3 MCP servers need auth · /mcp",
+            *[""] * 18,
+        ])
+        with mock.patch("u_agents.launcher._pane_start_command",
+                        return_value=launcher.CLAUDE_COMMAND), \
+             mock.patch("u_agents.launcher._pane_is_dead", return_value=False), \
+             mock.patch("u_agents.launcher._capture_pane",
+                        return_value=capture):
             launcher.wait_for_claude_ready("r-5")
 
     def test_wait_for_claude_ready_times_out_without_idle_prompt(self):

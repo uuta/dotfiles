@@ -45,9 +45,13 @@ DEFAULT_CONFIG_PATHS = [
 ]
 
 DEFAULT_PROMPT_TEMPLATE = PACKAGE_DIR / "prompts" / "pm.md"
-CLAUDE_COMMAND = os.environ.get("U_AGENTS_CLAUDE_COMMAND", "claude")
+CLAUDE_COMMAND = os.environ.get(
+    "U_AGENTS_CLAUDE_COMMAND",
+    "claude --permission-mode bypassPermissions",
+)
 CLAUDE_READY_TIMEOUT_SECONDS = 10.0
 CLAUDE_READY_POLL_SECONDS = 0.25
+CLAUDE_READY_SCAN_LINES = 40
 CLAUDE_READY_RE = re.compile(r"^\s*(?:[│|]\s*)?[>❯]\s*(?:$|Try\b)")
 
 
@@ -347,6 +351,9 @@ def ensure_window(repo: RepoConfig, issue: Issue, dry_run: bool) -> str:
 
 
 def _command_name(command: str) -> str:
+    command = command.strip()
+    if len(command) >= 2 and command[0] == command[-1] and command[0] in ("'", '"'):
+        command = command[1:-1]
     try:
         parts = shlex.split(command)
     except ValueError:
@@ -388,7 +395,10 @@ def _capture_pane(window: str) -> str:
 
 
 def _claude_appears_ready(capture: str) -> bool:
-    return any(CLAUDE_READY_RE.search(line) for line in capture.splitlines()[-8:])
+    return any(
+        CLAUDE_READY_RE.search(line)
+        for line in capture.splitlines()[-CLAUDE_READY_SCAN_LINES:]
+    )
 
 
 def wait_for_claude_ready(window: str) -> None:
@@ -439,7 +449,8 @@ def send_prompt(window: str, prompt: str, dry_run: bool) -> None:
     _tmux_in(["tmux", "load-buffer", "-b", buf, "-"], prompt)
     try:
         _tmux(["paste-buffer", "-b", buf, "-t", pane])
-        _tmux(["send-keys", "-t", pane, "Enter"])
+        time.sleep(0.5)
+        _tmux(["send-keys", "-t", pane, "C-m"])
     finally:
         _tmux(["delete-buffer", "-b", buf], check=False)
 

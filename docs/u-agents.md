@@ -20,7 +20,9 @@ source of truth. There is no ops DB, no daemon, no vector store.
 - `python3` (>= 3.10)
 - `tmux`
 - `gh` (authenticated against the target repositories)
-- `claude` (Claude Code CLI; override with `U_AGENTS_CLAUDE_COMMAND` if needed)
+- `claude` (Claude Code CLI; Launcher starts it with
+  `--permission-mode bypassPermissions` by default. Override with
+  `U_AGENTS_CLAUDE_COMMAND` if needed.)
 - `git`
 - `yq` (MikeFarah; only needed for YAML configs — `.json` configs do not require it)
 
