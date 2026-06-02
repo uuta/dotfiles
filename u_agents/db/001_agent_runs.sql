@@ -29,9 +29,9 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     CONSTRAINT agent_runs_github_issue_number_check
         CHECK (github_issue_number > 0),
     CONSTRAINT agent_runs_parent_branch_check
-        CHECK (btrim(parent_branch) <> ''),
+        CHECK (btrim(parent_branch) <> '' AND parent_branch !~ '[[:space:]]'),
     CONSTRAINT agent_runs_branch_name_check
-        CHECK (btrim(branch_name) <> ''),
+        CHECK (btrim(branch_name) <> '' AND branch_name !~ '[[:space:]]'),
     CONSTRAINT agent_runs_phase_check
         CHECK (phase IN (
             'claimed',
@@ -52,10 +52,13 @@ CREATE TABLE IF NOT EXISTS agent_runs (
         CHECK (btrim(machine_id) <> ''),
     CONSTRAINT agent_runs_locked_by_check
         CHECK (locked_by IS NULL OR btrim(locked_by) <> ''),
+    CONSTRAINT agent_runs_lease_pair_check
+        CHECK ((locked_by IS NULL) = (lease_until IS NULL)),
     CONSTRAINT agent_runs_worktree_basename_check
         CHECK (
             btrim(worktree_basename) <> ''
             AND worktree_basename NOT IN ('.', '..')
+            AND worktree_basename !~ '[[:space:]]'
             AND worktree_basename !~ '[/\\]'
         ),
     CONSTRAINT agent_runs_tmux_window_check
@@ -70,6 +73,11 @@ CREATE TABLE IF NOT EXISTS agent_runs (
         CHECK (review_result_relative_path = 'tmp/review-result.json'),
     CONSTRAINT agent_runs_pr_number_check
         CHECK (pr_number IS NULL OR pr_number > 0),
+    CONSTRAINT agent_runs_pr_phase_number_check
+        CHECK (
+            phase NOT IN ('pr_open', 'pr_watching', 'ready_to_merge')
+            OR pr_number IS NOT NULL
+        ),
     CONSTRAINT agent_runs_pr_review_fix_rounds_check
         CHECK (pr_review_fix_rounds >= 0),
     CONSTRAINT agent_runs_metadata_object_check

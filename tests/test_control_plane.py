@@ -46,6 +46,13 @@ class TestRunnerEnvironment(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "U_AGENTS_RUNNER_ID"):
             load_runner_identity({"U_AGENTS_MACHINE_ID": "machine-1"})
 
+    def test_runner_id_none_is_required(self):
+        with self.assertRaisesRegex(ConfigError, "U_AGENTS_RUNNER_ID"):
+            load_runner_identity({
+                "U_AGENTS_RUNNER_ID": None,
+                "U_AGENTS_MACHINE_ID": "machine-1",
+            })
+
     def test_machine_id_is_required(self):
         with self.assertRaisesRegex(ConfigError, "U_AGENTS_MACHINE_ID"):
             load_runner_identity({"U_AGENTS_RUNNER_ID": "runner-1", "U_AGENTS_MACHINE_ID": " "})
@@ -60,6 +67,16 @@ class TestRunnerEnvironment(unittest.TestCase):
             "postgresql://example/db",
         )
 
+    def test_database_url_accepts_postgres_alias(self):
+        self.assertEqual(
+            database_url_from_env({"U_AGENTS_DATABASE_URL": "postgres://example/db"}),
+            "postgres://example/db",
+        )
+
+    def test_database_url_rejects_invalid_scheme(self):
+        with self.assertRaisesRegex(ConfigError, "postgresql:// or postgres://"):
+            database_url_from_env({"U_AGENTS_DATABASE_URL": "mysql://example/db"})
+
 
 class TestWorktreeBasename(unittest.TestCase):
     def test_accepts_basename(self):
@@ -69,6 +86,12 @@ class TestWorktreeBasename(unittest.TestCase):
         for value in ("", " ", ".", "..", "a/b", r"a\b"):
             with self.subTest(value=value):
                 with self.assertRaises(ValueError):
+                    validate_worktree_basename(value)
+
+    def test_rejects_whitespace(self):
+        for value in (" 233", "233 ", "issue 233", "issue\t233", "issue\n233"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, "whitespace"):
                     validate_worktree_basename(value)
 
 

@@ -61,12 +61,23 @@ class TestAgentRunsSchema(unittest.TestCase):
         self.assertIn("pr_review_fix_rounds >= 0", self.sql)
         self.assertIn("btrim(runner_id) <> ''", self.sql)
         self.assertIn("btrim(machine_id) <> ''", self.sql)
+        self.assertIn("parent_branch !~ '[[:space:]]'", self.sql)
+        self.assertIn("branch_name !~ '[[:space:]]'", self.sql)
+        self.assertIn("worktree_basename !~ '[[:space:]]'", self.sql)
         self.assertIn("worktree_basename !~ '[/\\\\]'", self.sql)
         self.assertIn("jsonb_typeof(metadata) = 'object'", self.sql)
         self.assertIn(
             "review_result_relative_path = 'tmp/review-result.json'",
             self.sql,
         )
+
+    def test_constraints_cover_lease_pair_and_pr_phase_integrity(self):
+        self.assertIn("(locked_by IS NULL) = (lease_until IS NULL)", self.sql)
+        self.assertIn(
+            "phase NOT IN ('pr_open', 'pr_watching', 'ready_to_merge')",
+            self.sql,
+        )
+        self.assertIn("OR pr_number IS NOT NULL", self.sql)
 
     def test_updated_at_trigger_exists(self):
         self.assertIn("set_agent_runs_updated_at", self.sql)
@@ -93,6 +104,9 @@ class TestDbDocsContract(unittest.TestCase):
             "Only the Launcher creates or upserts the initial `agent_runs` row",
             "DB claim/lease first, then GitHub label swap",
             "review_result_relative_path",
+            "Must be non-empty and contain no whitespace",
+            "Must be set and cleared together with `lease_until`",
+            "required for `pr_open`, `pr_watching`, and `ready_to_merge`",
             "5 minutes",
             "Automated PR review comment fixes are allowed at most once",
             "pr_review_fix_rounds = 0",

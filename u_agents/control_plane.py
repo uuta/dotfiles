@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Mapping
+from urllib.parse import urlparse
 
 from u_agents.contract import ConfigError
 
@@ -50,19 +51,24 @@ class PrWatchDecision:
     block_reason: str = ""
 
 
-def _require_env(env: Mapping[str, str], name: str) -> str:
+def _require_env(env: Mapping[str, object], name: str) -> str:
     value = env.get(name, "")
-    if value.strip() == "":
+    if not isinstance(value, str) or value.strip() == "":
         raise ConfigError(f"{name} is required and must be non-empty")
     return value
 
 
-def database_url_from_env(env: Mapping[str, str] | None = None) -> str:
+def database_url_from_env(env: Mapping[str, object] | None = None) -> str:
     """Read and validate the PostgreSQL connection URL from environment."""
-    return _require_env(os.environ if env is None else env, ENV_DATABASE_URL)
+    url = _require_env(os.environ if env is None else env, ENV_DATABASE_URL)
+    if urlparse(url).scheme not in ("postgresql", "postgres"):
+        raise ConfigError(
+            f"{ENV_DATABASE_URL} must use postgresql:// or postgres://"
+        )
+    return url
 
 
-def load_runner_identity(env: Mapping[str, str] | None = None) -> RunnerIdentity:
+def load_runner_identity(env: Mapping[str, object] | None = None) -> RunnerIdentity:
     """Read runner identity from environment.
 
     Agents must not invent these values. The caller must provide them via
@@ -77,8 +83,10 @@ def load_runner_identity(env: Mapping[str, str] | None = None) -> RunnerIdentity
 
 def validate_worktree_basename(value: str) -> str:
     """Validate the DB worktree_basename rule in Python."""
-    if value.strip() == "":
+    if not isinstance(value, str) or value.strip() == "":
         raise ValueError("worktree_basename must be non-empty")
+    if any(ch.isspace() for ch in value):
+        raise ValueError("worktree_basename must not contain whitespace")
     if value in (".", "..") or "/" in value or "\\" in value:
         raise ValueError("worktree_basename must be a basename only")
     return value

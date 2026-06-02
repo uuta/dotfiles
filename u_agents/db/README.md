@@ -51,20 +51,20 @@ not invent placeholder identities.
 | `run_id` | `uuid` | DB default | Primary key for this claimed run. |
 | `repository_full_name` | `text` | Launcher | GitHub `owner/name`. |
 | `github_issue_number` | `integer` | Launcher | Claimed issue number. Must be positive. |
-| `parent_branch` | `text` | Launcher | Base branch for the PR, stored separately from `branch_name`. |
-| `branch_name` | `text` | Launcher | Working branch, normally `feat/<issue-number>`. |
+| `parent_branch` | `text` | Launcher | Base branch for the PR, stored separately from `branch_name`. Must be non-empty and contain no whitespace. |
+| `branch_name` | `text` | Launcher | Working branch, normally `feat/<issue-number>`. Must be non-empty and contain no whitespace. |
 | `phase` | `text` | Runner/PM | Current coordination phase. See phase contract below. |
 | `runner_id` | `text` | Runner | Configured runner identity that claimed or owns the row. |
 | `machine_id` | `text` | Runner | Configured machine identity for the row owner. |
-| `locked_by` | `text` | Runner | Current lease holder identity, usually `${runner_id}@${machine_id}`. |
-| `lease_until` | `timestamptz` | Runner | Lease expiry. Expired leases can be reclaimed after external checks. |
-| `worktree_basename` | `text` | Launcher | Basename-only worktree directory, normally issue number as text. |
+| `locked_by` | `text` | Runner | Current lease holder identity, usually `${runner_id}@${machine_id}`. Must be set and cleared together with `lease_until`. |
+| `lease_until` | `timestamptz` | Runner | Lease expiry. Must be set and cleared together with `locked_by`. Expired leases can be reclaimed after external checks. |
+| `worktree_basename` | `text` | Launcher | Basename-only worktree directory, normally issue number as text. Must be non-empty, not `.` or `..`, contain no slash/backslash, and contain no whitespace. |
 | `tmux_window` | `text` | Launcher/PM | Deterministic tmux window name. |
 | `pm_pane` | `text` | Launcher/PM | PM pane target once known. |
 | `engineer_pane` | `text` | PM | Engineer pane target once created. |
 | `reviewer_pane` | `text` | PM | Reviewer pane target once created. |
 | `review_result_relative_path` | `text` | Launcher/PM | Portable review JSON path inside the issue worktree. Must be `tmp/review-result.json`; each machine derives the absolute local path from its worktree root at runtime. |
-| `pr_number` | `integer` | PM/runner | PR number after PR creation. Must be positive when set. |
+| `pr_number` | `integer` | PM/runner | PR number after PR creation. Must be positive when set and is required for `pr_open`, `pr_watching`, and `ready_to_merge`. |
 | `pr_review_fix_rounds` | `integer` | PR watcher | Number of automated PR review fix loops used. Defaults to `0`. |
 | `block_reason` | `text` | Runner/PM | Required when `phase = 'blocked'`. |
 | `metadata` | `jsonb` | Runner/PM | Small structured observations. Must be a JSON object. |
