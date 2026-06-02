@@ -9,9 +9,12 @@ source of truth. There is no ops DB, no daemon, no vector store.
 | Component  | Path                          | Role                                                                 |
 | ---------- | ----------------------------- | -------------------------------------------------------------------- |
 | Contract   | `u_agents/contract.py`          | Config types and deterministic tmux/worktree/branch naming.          |
+| Control plane helpers | `u_agents/control_plane.py` | v0.2 pure phase/env decision helpers.                      |
 | Launcher   | `u_agents/launcher.py`          | Short-lived starter/resumer. Picks one ready issue and hands off PM. |
 | PM prompt  | `u_agents/prompts/pm.md`        | The contract sent into the PM pane. PM owns the per-issue workflow.  |
 | Watchdog   | `u_agents/watchdog.py`          | Detects stalled PM panes. Pings, then comments once if still stuck.  |
+| DB schema   | `u_agents/db/001_agent_runs.sql` | v0.2 PostgreSQL schema for claimed runs.                         |
+| DB docs     | `u_agents/db/README.md`         | Column ownership, phase contract, and PR watcher rules.             |
 | Config     | `u_agents/config/repositories.yml` | Local allowlist of repositories the Launcher may operate on.     |
 | State      | `<dotfiles checkout>/u_agents/state/watchdog.json` | Local Watchdog runtime state.                       |
 
@@ -25,6 +28,8 @@ source of truth. There is no ops DB, no daemon, no vector store.
   `U_AGENTS_CLAUDE_COMMAND` if needed.)
 - `git`
 - `yq` (MikeFarah; only needed for YAML configs — `.json` configs do not require it)
+- Docker, only for the v0.2 PostgreSQL control plane. It is not required for
+  the current launcher/watchdog runtime.
 
 ## Configuration
 
@@ -82,16 +87,84 @@ Optional but recommended sizing labels: `size:s`, `size:m`, `size:l`.
 | PM pane          | `agents:<window>.0` (pane title `pm`)                      |
 | worktree         | `${workspace_root}/.worktrees/<issue-number>`              |
 | branch           | `feat/<issue-number>`                                      |
+| review result    | `${workspace_root}/.worktrees/<issue-number>/tmp/review-result.json` |
 
 These names are deterministic. Both Launcher and Watchdog reconstruct them
 from `(repo, issue_number)` — no shared state file needed.
 
+## Reviewer result contract
+
+The PM/reviewer handoff uses an explicit JSON result file in the issue
+worktree:
+
+```text
+tmp/review-result.json
+```
+
+The PM writes `running` before each review round and instructs the reviewer
+to overwrite the file with the final result. Reviewer completion must be
+decided from this file, not from tmux idle state, pane appearance, or output
+polling.
+
+Required JSON shape:
+
+```json
+{
+  "status": "running",
+  "must_fix": [],
+  "optional": [],
+  "verification": [],
+  "summary": ""
+}
+```
+
+Allowed `status` values:
+
+- `running` — review has started and final data is not ready.
+- `clean` — PM may push the branch and open the PR.
+- `fix_required` — PM sends `must_fix` items back to the engineer.
+- `blocked` — PM stops and reports the blocker.
+
+If `tmp/review-result.json` is missing, malformed, still `running` 5 minutes
+after reviewer assignment, or contains an unknown status, the PM treats the
+reviewer as stalled and allows watchdog recovery. It must not open a PR from
+reviewer pane output alone.
+
+## v0.2 DB control plane
+
+The v0.2 database contract is defined in `u_agents/db/README.md` and
+`u_agents/db/001_agent_runs.sql`. It adds a PostgreSQL `agent_runs` table for
+claimed work only. GitHub Issues with `status:ready` remain the queue source
+of truth; DB rows are created only after the Launcher claims or leases work.
+
+Claim order for the future DB-backed Launcher is:
+
+1. Observe a `status:ready` GitHub issue.
+2. Acquire/upsert the DB claim and lease in `agent_runs`.
+3. Re-verify the GitHub issue is still open and `status:ready`.
+4. Swap the GitHub label to `status:in-progress`.
+5. Start/resume the PM tmux pane and set `phase = 'pm_started'`.
+
+The DB coordinates runners, but it is not the only truth. Before acting on a
+row, a runner must verify external reality from GitHub, tmux, git, and
+`tmp/review-result.json`.
+
+Required runner environment for DB-backed operation:
+
+| Name | Meaning |
+| ---- | ------- |
+| `U_AGENTS_DATABASE_URL` | PostgreSQL URL, for example `postgresql://u_agents:u_agents_dev_password@127.0.0.1:54329/u_agents`. |
+| `U_AGENTS_RUNNER_ID` | Stable runner identity from config/env. |
+| `U_AGENTS_MACHINE_ID` | Stable machine identity from config/env. |
+
+Agents must not invent `U_AGENTS_RUNNER_ID` or `U_AGENTS_MACHINE_ID`.
+
 ## Commands
 
-From the `u_agents/` directory, `mise.toml` exposes short aliases for the
-launcher, watchdog, and test runs. Each task sets `dir = ".."` so it runs
-from the dotfiles checkout root, where `python3 -m u_agents.*` can import
-the package:
+From the `u_agents/` directory, `mise.toml` exposes short aliases. Python
+tasks run from the dotfiles checkout root so `python3 -m u_agents.*` can
+import the package. DB tasks run from `u_agents/` so Docker Compose reads
+`compose.yml` and relative `db/` init scripts.
 
 ```sh
 cd u_agents
@@ -100,6 +173,9 @@ mise run launcher           # python3 -m u_agents.launcher
 mise run watchdog-dry-run   # python3 -m u_agents.watchdog --once --dry-run
 mise run watchdog           # python3 -m u_agents.watchdog --once
 mise run test               # python3 -m unittest discover tests
+mise run db-up              # docker compose -f compose.yml up -d --wait postgres
+mise run db-psql            # psql into local Postgres
+mise run db-down            # docker compose -f compose.yml down
 ```
 
 Service-management commands (`doctor`/`install`/`start`/`status`/`stop`)

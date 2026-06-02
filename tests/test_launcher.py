@@ -4,7 +4,12 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from u_agents.contract import LABEL_IN_PROGRESS, LABEL_READY, RepoConfig
+from u_agents.contract import (
+    LABEL_IN_PROGRESS,
+    LABEL_READY,
+    REVIEW_RESULT_STATUSES,
+    RepoConfig,
+)
 from u_agents import launcher
 from u_agents.launcher import (
     DEFAULT_CONFIG_PATHS,
@@ -139,9 +144,20 @@ class TestRenderPmPrompt(unittest.TestCase):
         self.assertIn("agents:trander-flutter-233.0", out)
         self.assertIn("/Users/y/trander-flutter/master", out)
         self.assertIn("/Users/y/trander-flutter/.worktrees/233", out)
+        self.assertIn(
+            "/Users/y/trander-flutter/.worktrees/233/tmp/review-result.json",
+            out,
+        )
         self.assertIn("feat/233", out)
         # Watchdog ping line is mentioned in the contract.
         self.assertIn("stalled", out)
+        for status in REVIEW_RESULT_STATUSES:
+            self.assertIn(status, out)
+        for field in ("status", "must_fix", "optional", "verification", "summary"):
+            self.assertIn(f'"{field}"', out)
+        self.assertIn("Do not infer reviewer completion from tmux idle state", out)
+        self.assertIn("5 minutes after reviewer", out)
+        self.assertIn("Do not open a PR from pane output alone", out)
 
     def test_brace_in_title_does_not_break_format(self):
         repo = RepoConfig("o/r", "/w/r", "main")

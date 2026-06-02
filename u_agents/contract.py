@@ -17,6 +17,8 @@ from typing import List
 TMUX_SESSION = "agents"
 LABEL_READY = "status:ready"
 LABEL_IN_PROGRESS = "status:in-progress"
+REVIEW_RESULT_RELATIVE_PATH = "tmp/review-result.json"
+REVIEW_RESULT_STATUSES = ("running", "clean", "fix_required", "blocked")
 
 _WINDOW_RE = re.compile(r"^(?P<repo>[A-Za-z0-9._-]+)-(?P<num>\d+)$")
 
@@ -111,6 +113,10 @@ def branch_name(issue_number: int) -> str:
 
 def worktree_path(repo: RepoConfig, issue_number: int) -> str:
     return f"{repo.worktrees_root}/{issue_number}"
+
+
+def review_result_path(repo: RepoConfig, issue_number: int) -> str:
+    return f"{worktree_path(repo, issue_number)}/{REVIEW_RESULT_RELATIVE_PATH}"
 
 
 def parse_window_name(window: str) -> tuple[str, int] | None:
