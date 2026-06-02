@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: u-agents-postgres
+    ports:
+      - "127.0.0.1:54329:5432"
+    environment:
+      POSTGRES_DB: u_agents
+      POSTGRES_USER: u_agents
+      POSTGRES_PASSWORD: u_agents_dev_password
+    volumes:
+      - u_agents_pgdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U u_agents -d u_agents"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  u_agents_pgdata:

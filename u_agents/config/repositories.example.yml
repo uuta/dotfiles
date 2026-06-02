@@ -9,6 +9,12 @@
 # Required GitHub labels on each enabled repo:
 #   - status:ready        (issue is ready for the Launcher to pick up)
 #   - status:in-progress  (Launcher swaps to this after claim)
+#
+# v0.2 DB-backed runners also require these env/config values. Do not let
+# agents invent them:
+#   U_AGENTS_DATABASE_URL  PostgreSQL connection URL
+#   U_AGENTS_RUNNER_ID     stable runner identity
+#   U_AGENTS_MACHINE_ID    stable machine/host identity
 
 repositories:
   - full_name: your-org/trander-flutter

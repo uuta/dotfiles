@@ -7,10 +7,13 @@ from u_agents.contract import (
     LABEL_IN_PROGRESS,
     LABEL_READY,
     RepoConfig,
+    REVIEW_RESULT_RELATIVE_PATH,
+    REVIEW_RESULT_STATUSES,
     branch_name,
     load_config,
     parse_window_name,
     pm_pane_target,
+    review_result_path,
     tmux_window_name,
     worktree_path,
 )
@@ -51,6 +54,13 @@ class TestNaming(unittest.TestCase):
     def test_branch_and_worktree(self):
         self.assertEqual(branch_name(233), "feat/233")
         self.assertEqual(worktree_path(self.repo, 233), "/tmp/tf/.worktrees/233")
+
+    def test_review_result_path(self):
+        self.assertEqual(REVIEW_RESULT_RELATIVE_PATH, "tmp/review-result.json")
+        self.assertEqual(
+            review_result_path(self.repo, 233),
+            "/tmp/tf/.worktrees/233/tmp/review-result.json",
+        )
 
     def test_parse_window_name(self):
         self.assertEqual(parse_window_name("trander-flutter-233"),
@@ -103,6 +113,14 @@ class TestLabelConstants(unittest.TestCase):
     def test_labels(self):
         self.assertEqual(LABEL_READY, "status:ready")
         self.assertEqual(LABEL_IN_PROGRESS, "status:in-progress")
+
+
+class TestReviewResultConstants(unittest.TestCase):
+    def test_statuses(self):
+        self.assertEqual(
+            REVIEW_RESULT_STATUSES,
+            ("running", "clean", "fix_required", "blocked"),
+        )
 
 
 if __name__ == "__main__":
