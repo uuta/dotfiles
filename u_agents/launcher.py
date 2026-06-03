@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""v0.1 Launcher: short-lived starter/resumer for tmux PM agents.
+"""v0.2 Launcher: DB-backed starter/resumer for tmux PM agents.
 
-Picks one status:ready issue from an enabled target repository, claims it
-by swapping labels and posting a claim comment, ensures a deterministic
-tmux window exists, and sends the PM prompt into that window.
+Picks one status:ready issue from an enabled target repository, acquires an
+agent_runs claim lease, re-verifies GitHub state, swaps labels, ensures a
+deterministic tmux window exists, and sends the PM prompt into that window.
 
-Read-only on GitHub by default; --dry-run additionally suppresses tmux
-writes and claim mutations. GitHub authentication is required for issue
-listing in both modes.
+Live runs mutate GitHub labels and comments after the DB claim succeeds.
+--dry-run suppresses DB, GitHub, and tmux writes while printing intended
+actions. GitHub authentication is required for issue listing in both modes.
 """
 from __future__ import annotations
 
@@ -23,6 +23,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, List, Optional
 
+from u_agents.agent_runs import (
+    AgentRun,
+    AgentRunsClient,
+    ClaimPayload,
+    build_claim_payload,
+)
 from u_agents.contract import (
     LABEL_IN_PROGRESS,
     LABEL_READY,
@@ -36,6 +42,7 @@ from u_agents.contract import (
     tmux_window_name,
     worktree_path,
 )
+from u_agents.control_plane import RunnerIdentity, load_runner_identity
 
 PACKAGE_DIR = Path(__file__).resolve().parent
 
@@ -64,6 +71,67 @@ class Issue:
     title: str
     url: str
     labels: List[str]
+
+
+class DryRunAgentRunsClient:
+    def __init__(self, identity: RunnerIdentity):
+        self.identity = identity
+
+    def acquire_claim(self, payload: ClaimPayload) -> AgentRun:
+        print(
+            "DRY: would acquire agent_runs claim lease for "
+            f"{payload.repository_full_name}#{payload.github_issue_number} "
+            f"(phase={payload.phase}, locked_by={payload.locked_by}, "
+            f"lease_until={payload.lease_until.isoformat()}, "
+            f"worktree_basename={payload.worktree_basename}, "
+            f"tmux_window={payload.tmux_window})",
+            file=sys.stderr,
+        )
+        return AgentRun(
+            repository_full_name=payload.repository_full_name,
+            github_issue_number=payload.github_issue_number,
+            parent_branch=payload.parent_branch,
+            branch_name=payload.branch_name,
+            phase=payload.phase,
+            runner_id=payload.runner_id,
+            machine_id=payload.machine_id,
+            locked_by=payload.locked_by,
+            lease_until=payload.lease_until,
+            worktree_basename=payload.worktree_basename,
+            tmux_window=payload.tmux_window,
+        )
+
+    def mark_pm_started(self, run: AgentRun) -> AgentRun:
+        print(
+            "DRY: would update agent_runs phase to 'pm_started' for "
+            f"{run.repository_full_name}#{run.github_issue_number} "
+            f"with pm_pane={pm_pane_target(run.tmux_window)}",
+            file=sys.stderr,
+        )
+        return AgentRun(
+            repository_full_name=run.repository_full_name,
+            github_issue_number=run.github_issue_number,
+            parent_branch=run.parent_branch,
+            branch_name=run.branch_name,
+            phase="pm_started",
+            runner_id=run.runner_id,
+            machine_id=run.machine_id,
+            locked_by=run.locked_by,
+            lease_until=run.lease_until,
+            worktree_basename=run.worktree_basename,
+            tmux_window=run.tmux_window,
+            pm_pane=pm_pane_target(run.tmux_window),
+        )
+
+    def cancel_run(self, repo_full: str, issue_number: int, *, metadata=None):
+        print(
+            f"DRY: would cancel agent_runs row for {repo_full}#{issue_number} "
+            f"metadata={metadata or {}}",
+            file=sys.stderr,
+        )
+
+    def close(self) -> None:
+        return None
 
 
 # ---------------------------------------------------------------------------
@@ -184,6 +252,24 @@ def fetch_issue(repo: RepoConfig, number: int) -> Optional[Issue]:
         url=str(data.get("url", "")),
         labels=labels,
     )
+
+
+def issue_is_ready(issue: Issue) -> bool:
+    return LABEL_READY in issue.labels and LABEL_IN_PROGRESS not in issue.labels
+
+
+def reverify_issue_ready(repo: RepoConfig, number: int) -> Optional[Issue]:
+    issue = fetch_issue(repo, number)
+    if issue is None:
+        return None
+    if not issue_is_ready(issue):
+        print(
+            f"SKIP: {repo.full_name}#{number} is no longer {LABEL_READY}; "
+            "aborting after DB claim and before label mutation",
+            file=sys.stderr,
+        )
+        return None
+    return issue
 
 
 def rollback_claim(issue: Issue, dry_run: bool) -> bool:
@@ -467,6 +553,21 @@ def _tmux_in(cmd: List[str], data: str) -> None:
 # Orchestration
 # ---------------------------------------------------------------------------
 
+def create_agent_runs_client(dry_run: bool):
+    if dry_run:
+        return DryRunAgentRunsClient(load_runner_identity())
+    return AgentRunsClient.from_env()
+
+
+def _agent_runs_client(args):
+    client = getattr(args, "agent_runs_client", None)
+    if client is not None:
+        return client
+    client = create_agent_runs_client(args.dry_run)
+    setattr(args, "agent_runs_client", client)
+    return client
+
+
 def pick_issue(
     repos: List[RepoConfig],
     target_repo: Optional[str],
@@ -581,14 +682,45 @@ def _resolve_repo(repos: List[RepoConfig], name: str) -> Optional[RepoConfig]:
 def dispatch_claim(issue: Issue, args) -> int:
     """Full claim flow with partial-claim rollback.
 
-    Order: label swap -> ensure window -> claim comment -> send prompt.
-    If anything after the swap raises, attempt to revert the label so the
-    issue re-enters the queue. The resume sweep recovers it next run if
-    the rollback itself fails.
+    Order: DB claim/lease -> GitHub re-check -> label swap -> tmux PM prompt
+    -> phase=pm_started. If anything after the swap raises, attempt to revert
+    the label so the issue re-enters the queue. The resume sweep recovers it
+    next run if the rollback itself fails.
     """
     repo = issue.repo
     window = tmux_window_name(repo, issue.number)
     window_preexisted = False
+    db = _agent_runs_client(args)
+
+    payload = build_claim_payload(
+        repo,
+        issue.number,
+        branch_name(issue.number),
+        db.identity,
+    )
+    print(
+        f"Claiming {repo.full_name}#{issue.number} \"{issue.title}\"",
+        file=sys.stderr,
+    )
+    try:
+        run = db.acquire_claim(payload)
+    except Exception as e:
+        print(
+            f"ERROR: DB claim failed for {repo.full_name}#{issue.number}: "
+            f"{type(e).__name__}: {e}\n"
+            f"       Aborting dispatch before GitHub label mutation or tmux work.",
+            file=sys.stderr,
+        )
+        return 2
+
+    current = issue if args.dry_run else reverify_issue_ready(repo, issue.number)
+    if current is None:
+        db.cancel_run(
+            repo.full_name,
+            issue.number,
+            metadata={"cancel_reason": "github_reverification_failed"},
+        )
+        return 0
 
     if not args.dry_run and window_exists(window):
         window_preexisted = True
@@ -599,14 +731,15 @@ def dispatch_claim(issue: Issue, args) -> int:
             f"      If the existing PM is dead: tmux kill-window -t {TMUX_SESSION}:{window}",
             file=sys.stderr,
         )
+        db.cancel_run(
+            repo.full_name,
+            issue.number,
+            metadata={"cancel_reason": "tmux_window_already_exists"},
+        )
         return 0
 
-    print(
-        f"Claiming {repo.full_name}#{issue.number} \"{issue.title}\"",
-        file=sys.stderr,
-    )
     try:
-        swapped = claim_issue(issue, args.dry_run)
+        swapped = claim_issue(current, args.dry_run)
     except RuntimeError as e:
         print(
             f"ERROR: claim failed for {repo.full_name}#{issue.number}: {e}\n"
@@ -622,10 +755,11 @@ def dispatch_claim(issue: Issue, args) -> int:
         )
         return 2
     try:
-        ensure_window(repo, issue, args.dry_run)
-        post_claim_comment(issue, window, args.dry_run)
-        prompt = render_pm_prompt(args.prompt_template, issue, window)
+        ensure_window(repo, current, args.dry_run)
+        post_claim_comment(current, window, args.dry_run)
+        prompt = render_pm_prompt(args.prompt_template, current, window)
         send_prompt(window, prompt, args.dry_run)
+        db.mark_pm_started(run)
     except Exception as e:
         if swapped:
             print(
@@ -634,7 +768,7 @@ def dispatch_claim(issue: Issue, args) -> int:
                 f"       Attempting label rollback for {repo.full_name}#{issue.number}",
                 file=sys.stderr,
             )
-            rollback_claim(issue, args.dry_run)
+            rollback_claim(current, args.dry_run)
             if not args.dry_run and not window_preexisted and window_exists(window):
                 print(
                     f"       Cleaning up newly created tmux window "
@@ -642,6 +776,11 @@ def dispatch_claim(issue: Issue, args) -> int:
                     file=sys.stderr,
                 )
                 kill_window(window, args.dry_run)
+            db.cancel_run(
+                repo.full_name,
+                issue.number,
+                metadata={"cancel_reason": "dispatch_failed_after_label_swap"},
+            )
         else:
             print(
                 f"ERROR: dispatch failed: {type(e).__name__}: {e}",
@@ -694,7 +833,9 @@ def dispatch_resume(issue: Issue, args) -> int:
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="v0.1 Launcher for tmux PM agents")
+    p = argparse.ArgumentParser(
+        description="v0.2 DB-backed Launcher for tmux PM agents"
+    )
     p.add_argument("--config", type=Path, help="repositories config path (yaml or json)")
     p.add_argument("--dry-run", action="store_true",
                    help="do not mutate GitHub or tmux; print intended actions")

@@ -57,6 +57,26 @@ class TestRunnerEnvironment(unittest.TestCase):
         with self.assertRaisesRegex(ConfigError, "U_AGENTS_MACHINE_ID"):
             load_runner_identity({"U_AGENTS_RUNNER_ID": "runner-1", "U_AGENTS_MACHINE_ID": " "})
 
+    def test_runner_identity_rejects_placeholders(self):
+        placeholders = ("runner", "runner-id", "placeholder", "changeme", "todo")
+        for value in placeholders:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ConfigError, "placeholder identity"):
+                    load_runner_identity({
+                        "U_AGENTS_RUNNER_ID": value,
+                        "U_AGENTS_MACHINE_ID": "machine-1",
+                    })
+
+    def test_machine_identity_rejects_placeholders(self):
+        placeholders = ("machine", "machine-id", "example")
+        for value in placeholders:
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ConfigError, "placeholder identity"):
+                    load_runner_identity({
+                        "U_AGENTS_RUNNER_ID": "runner-1",
+                        "U_AGENTS_MACHINE_ID": value,
+                    })
+
     def test_database_url_is_required(self):
         with self.assertRaisesRegex(ConfigError, "U_AGENTS_DATABASE_URL"):
             database_url_from_env({"U_AGENTS_DATABASE_URL": ""})

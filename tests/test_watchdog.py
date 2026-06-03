@@ -1,10 +1,13 @@
+import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 from u_agents.contract import RepoConfig
+from u_agents.agent_runs import AgentRun
 from u_agents import watchdog
 from u_agents.watchdog import (
     DEFAULT_STATE_DIR,
@@ -25,6 +28,43 @@ class FakeClock:
     def __call__(self):
         self.t += 1.0
         return self.t
+
+
+def _run_row(repo_full="uuta/u", issue_number=5, phase="pm_started",
+             tmux_window="u-5", pm_pane="agents:u-5.0", lease_until="past"):
+    return AgentRun(
+        repository_full_name=repo_full,
+        github_issue_number=issue_number,
+        parent_branch="main",
+        branch_name=f"feat/{issue_number}",
+        phase=phase,
+        runner_id="runner-1",
+        machine_id="machine-1",
+        locked_by="runner-1@machine-1",
+        lease_until=lease_until,
+        worktree_basename=str(issue_number),
+        tmux_window=tmux_window,
+        pm_pane=pm_pane,
+    )
+
+
+class FakeDbClient:
+    def __init__(self, active=None, stale=None):
+        self.active = list(active or [])
+        self.stale = list(stale or [])
+        self.observations = []
+
+    def list_active_runs(self):
+        return list(self.active)
+
+    def list_stale_runs(self):
+        return list(self.stale)
+
+    def record_observation(self, repo_full, issue_number, observation):
+        self.observations.append((repo_full, issue_number, observation))
+
+    def close(self):
+        return None
 
 
 class TestDefaultStatePath(unittest.TestCase):
@@ -73,6 +113,8 @@ class TestWatchdogMainStateDir(unittest.TestCase):
                 return_value=Path("/dev/null"),
             ),
             mock.patch("u_agents.watchdog.load_config", return_value=[]),
+            mock.patch("u_agents.watchdog.AgentRunsClient.from_env",
+                       return_value=FakeDbClient()),
             mock.patch("u_agents.watchdog.check_once") as check_once_mock,
         ):
             rc = watchdog_main(["--once", "--state-dir", d])
@@ -211,6 +253,229 @@ class TestCheckOnce(unittest.TestCase):
             comment=comment, now=self.clock,
         )
         self.assertEqual(attempts, [self.window])
+
+    def test_db_backed_lookup_pings_stale_run_after_stall(self):
+        db = FakeDbClient(active=[], stale=[_run_row()])
+        pings = []
+
+        def list_windows():
+            return [self.window]
+
+        def capture(_w):
+            return "idle"
+
+        def ping(w, _dry):
+            pings.append(w)
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=list_windows, capture=capture, ping=ping,
+            comment=lambda *_args: None, now=self.clock, db_client=db,
+            verify_run=lambda _run: True,
+        )
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=list_windows, capture=capture, ping=ping,
+            comment=lambda *_args: None, now=self.clock, db_client=db,
+            verify_run=lambda _run: True,
+        )
+
+        self.assertEqual(pings, [self.window])
+        self.assertEqual(db.observations[0][2]["watchdog"], "stale_lease")
+
+    def test_missing_db_tmux_window_records_mismatch_without_pane_action(self):
+        db = FakeDbClient(active=[_run_row(tmux_window="u-5")])
+        captures = []
+        pings = []
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [],
+            capture=lambda w: captures.append(w) or "idle",
+            ping=lambda w, _dry: pings.append(w),
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=lambda _run: True,
+        )
+
+        self.assertEqual(captures, [])
+        self.assertEqual(pings, [])
+        self.assertEqual(db.observations[0][2]["watchdog"], "tmux_window_missing")
+
+    def test_failed_github_verification_records_observation(self):
+        db = FakeDbClient(active=[_run_row()])
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [self.window],
+            capture=lambda _w: "idle",
+            ping=lambda *_args: None,
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=lambda _run: False,
+        )
+
+        self.assertEqual(
+            db.observations[0][2]["watchdog"],
+            "github_issue_verification_failed",
+        )
+
+    def test_transient_verification_error_is_not_recorded_as_metadata(self):
+        # Comment 5: a transient verification failure must be retried by the
+        # outer loop, not stored as github_issue_verification_failed metadata.
+        db = FakeDbClient(active=[_run_row()])
+        pings = []
+
+        def verify(_run):
+            raise RuntimeError("transient network error")
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [self.window],
+            capture=lambda _w: "idle",
+            ping=lambda w, _dry: pings.append(w),
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=verify,
+        )
+
+        self.assertEqual(db.observations, [])
+        self.assertEqual(pings, [])
+
+    def test_transient_verification_preserves_live_window_state(self):
+        # Manager blocker: a transient verify_run failure must defer the run
+        # without letting the cleanup sweep delete the live window's stall
+        # state. Otherwise a sustained outage repeatedly resets the counters.
+        save_state(
+            self.state_file,
+            {"u-5": WindowState(last_hash="h", unchanged_checks=2,
+                                pinged=False, stall_comment_posted=False,
+                                last_update=10.0)},
+        )
+        db = FakeDbClient(active=[_run_row(tmux_window="u-5")])
+        captures = []
+        pings = []
+
+        def verify(_run):
+            raise RuntimeError("transient")
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [self.window],
+            capture=lambda w: captures.append(w) or "idle",
+            ping=lambda w, _dry: pings.append(w),
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=verify,
+        )
+
+        state = load_state(self.state_file)
+        self.assertIn("u-5", state)
+        self.assertEqual(state["u-5"].last_hash, "h")
+        self.assertEqual(state["u-5"].unchanged_checks, 2)
+        self.assertFalse(state["u-5"].pinged)
+        self.assertFalse(state["u-5"].stall_comment_posted)
+        self.assertEqual(state["u-5"].last_update, 10.0)
+        # No pane action this pass: state counters are left untouched.
+        self.assertEqual(captures, [])
+        self.assertEqual(pings, [])
+        self.assertEqual(db.observations, [])
+
+    def test_transient_verification_does_not_preserve_gone_window_state(self):
+        # A deferred run whose tmux window is no longer live must not pin stale
+        # local state; genuinely gone windows still expire via cleanup.
+        save_state(
+            self.state_file,
+            {"u-5": WindowState(last_hash="h", unchanged_checks=2)},
+        )
+        db = FakeDbClient(active=[_run_row(tmux_window="u-5")])
+
+        def verify(_run):
+            raise RuntimeError("transient")
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [],  # window no longer live
+            capture=lambda _w: "idle",
+            ping=lambda *_args: None,
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=verify,
+        )
+
+        self.assertEqual(load_state(self.state_file), {})
+
+
+class TestGithubIssueVerification(unittest.TestCase):
+    """Comment 5: distinguish definitive vs transient issue verification."""
+
+    @staticmethod
+    def _completed(returncode=0, stdout="", stderr=""):
+        return subprocess.CompletedProcess(
+            args=["gh"], returncode=returncode, stdout=stdout, stderr=stderr,
+        )
+
+    def test_transient_error_raises_runtime_error(self):
+        proc = self._completed(
+            returncode=1, stderr="error connecting to api.github.com: timeout",
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+
+    def test_not_found_returns_false(self):
+        proc = self._completed(
+            returncode=1,
+            stderr="GraphQL: Could not resolve to an Issue with the number of 5.",
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            self.assertFalse(
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+            )
+
+    def test_dns_resolution_failure_is_transient_not_absence(self):
+        # "Could not resolve host" is a DNS/network error, not a missing issue.
+        proc = self._completed(
+            returncode=1, stderr="Could not resolve host: api.github.com",
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+
+    def test_malformed_json_raises_runtime_error(self):
+        proc = self._completed(returncode=0, stdout="<html>502</html>")
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+
+    def test_closed_issue_returns_false(self):
+        proc = self._completed(
+            returncode=0, stdout=json.dumps({"state": "CLOSED", "labels": []}),
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            self.assertFalse(
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+            )
+
+    def test_open_issue_with_in_progress_label_is_allowed(self):
+        from u_agents.contract import LABEL_IN_PROGRESS
+        proc = self._completed(
+            returncode=0,
+            stdout=json.dumps(
+                {"state": "OPEN", "labels": [{"name": LABEL_IN_PROGRESS}]}
+            ),
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            self.assertTrue(
+                watchdog.github_issue_allows_watchdog_action(
+                    _run_row(phase="engineering")
+                )
+            )
 
 
 class TestCheckOnceUnknownRepo(unittest.TestCase):

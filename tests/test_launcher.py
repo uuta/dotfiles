@@ -10,6 +10,8 @@ from u_agents.contract import (
     REVIEW_RESULT_STATUSES,
     RepoConfig,
 )
+from u_agents.agent_runs import AgentRun
+from u_agents.control_plane import RunnerIdentity
 from u_agents import launcher
 from u_agents.launcher import (
     DEFAULT_CONFIG_PATHS,
@@ -32,6 +34,50 @@ def _mk_issue(repo: RepoConfig, n: int, title: str = "x",
                  labels=list(labels))
 
 
+class FakeAgentRunsClient:
+    def __init__(self, events=None):
+        self.identity = RunnerIdentity("runner-1", "machine-1")
+        self.events = [] if events is None else events
+        self.cancelled = []
+
+    def acquire_claim(self, payload):
+        self.events.append("db_claim")
+        return AgentRun(
+            repository_full_name=payload.repository_full_name,
+            github_issue_number=payload.github_issue_number,
+            parent_branch=payload.parent_branch,
+            branch_name=payload.branch_name,
+            phase=payload.phase,
+            runner_id=payload.runner_id,
+            machine_id=payload.machine_id,
+            locked_by=payload.locked_by,
+            lease_until=payload.lease_until,
+            worktree_basename=payload.worktree_basename,
+            tmux_window=payload.tmux_window,
+        )
+
+    def mark_pm_started(self, run):
+        self.events.append("pm_started")
+        return AgentRun(
+            repository_full_name=run.repository_full_name,
+            github_issue_number=run.github_issue_number,
+            parent_branch=run.parent_branch,
+            branch_name=run.branch_name,
+            phase="pm_started",
+            runner_id=run.runner_id,
+            machine_id=run.machine_id,
+            locked_by=run.locked_by,
+            lease_until=run.lease_until,
+            worktree_basename=run.worktree_basename,
+            tmux_window=run.tmux_window,
+            pm_pane=f"agents:{run.tmux_window}.0",
+        )
+
+    def cancel_run(self, repo_full, issue_number, *, metadata=None):
+        self.events.append("cancel")
+        self.cancelled.append((repo_full, issue_number, metadata or {}))
+
+
 def _args(**overrides):
     """Build a minimal argparse.Namespace matching launcher main() args."""
     defaults = dict(
@@ -40,6 +86,7 @@ def _args(**overrides):
         repo=None,
         issue=None,
         prompt_template=DEFAULT_PROMPT_TEMPLATE,
+        agent_runs_client=FakeAgentRunsClient(),
     )
     defaults.update(overrides)
     return argparse.Namespace(**defaults)
@@ -538,6 +585,75 @@ class TestMainGeneralRunHonorsFilters(unittest.TestCase):
         self.assertEqual(claimed, [("o/a", 5)])
 
 
+class TestDbBackedClaimFlow(unittest.TestCase):
+    def setUp(self):
+        self.repo = RepoConfig("o/r", "/w/r", "main")
+        self.issue = _mk_issue(self.repo, 5, labels=[LABEL_READY])
+
+    def test_db_claim_happens_before_label_swap(self):
+        events = []
+        db = FakeAgentRunsClient(events)
+
+        def claim(_issue, _dry):
+            events.append("label_swap")
+            return True
+
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists", return_value=False), \
+             mock.patch("u_agents.launcher.claim_issue", side_effect=claim), \
+             mock.patch("u_agents.launcher.ensure_window",
+                        side_effect=lambda *_args: events.append("tmux") or "r-5"), \
+             mock.patch("u_agents.launcher.post_claim_comment"), \
+             mock.patch("u_agents.launcher.send_prompt",
+                        side_effect=lambda *_args: events.append("prompt")):
+            rc = dispatch_claim(self.issue, _args(agent_runs_client=db))
+
+        self.assertEqual(rc, 0)
+        self.assertLess(events.index("db_claim"), events.index("label_swap"))
+        self.assertLess(events.index("label_swap"), events.index("tmux"))
+
+    def test_no_tmux_if_post_claim_github_reverification_fails(self):
+        db = FakeAgentRunsClient()
+
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=None), \
+             mock.patch("u_agents.launcher.claim_issue") as m_claim, \
+             mock.patch("u_agents.launcher.ensure_window") as m_window, \
+             mock.patch("u_agents.launcher.send_prompt") as m_prompt:
+            rc = dispatch_claim(self.issue, _args(agent_runs_client=db))
+
+        self.assertEqual(rc, 0)
+        m_claim.assert_not_called()
+        m_window.assert_not_called()
+        m_prompt.assert_not_called()
+        self.assertEqual(db.cancelled[0][2]["cancel_reason"],
+                         "github_reverification_failed")
+
+    def test_pm_started_is_written_after_prompt_send(self):
+        events = []
+        db = FakeAgentRunsClient(events)
+
+        def claim(_issue, _dry):
+            events.append("label_swap")
+            return True
+
+        def send(_window, _prompt, _dry):
+            events.append("prompt_sent")
+
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists", return_value=False), \
+             mock.patch("u_agents.launcher.claim_issue", side_effect=claim), \
+             mock.patch("u_agents.launcher.ensure_window", return_value="r-5"), \
+             mock.patch("u_agents.launcher.post_claim_comment"), \
+             mock.patch("u_agents.launcher.send_prompt", side_effect=send):
+            rc = dispatch_claim(self.issue, _args(agent_runs_client=db))
+
+        self.assertEqual(rc, 0)
+        self.assertLess(events.index("prompt_sent"), events.index("pm_started"))
+
+
 class TestDispatchClaimRollback(unittest.TestCase):
     """Fix #3: rollback labels when dispatch fails after successful claim."""
 
@@ -546,7 +662,9 @@ class TestDispatchClaimRollback(unittest.TestCase):
         self.issue = _mk_issue(self.repo, 5, labels=[LABEL_READY])
 
     def test_rollback_called_when_send_prompt_fails_after_claim(self):
-        with mock.patch("u_agents.launcher.window_exists", return_value=False), \
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists", return_value=False), \
              mock.patch("u_agents.launcher.claim_issue", return_value=True) as m_claim, \
              mock.patch("u_agents.launcher.ensure_window", return_value="r-5"), \
              mock.patch("u_agents.launcher.post_claim_comment"), \
@@ -559,7 +677,9 @@ class TestDispatchClaimRollback(unittest.TestCase):
             m_rollback.assert_called_once_with(self.issue, False)
 
     def test_cleans_new_window_when_send_prompt_fails_after_claim(self):
-        with mock.patch("u_agents.launcher.window_exists",
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists",
                         side_effect=[False, True]) as m_exists, \
              mock.patch("u_agents.launcher.claim_issue", return_value=True), \
              mock.patch("u_agents.launcher.ensure_window", return_value="r-5"), \
@@ -574,7 +694,9 @@ class TestDispatchClaimRollback(unittest.TestCase):
             m_kill.assert_called_once_with("r-5", False)
 
     def test_does_not_cleanup_when_no_window_was_created(self):
-        with mock.patch("u_agents.launcher.window_exists",
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists",
                         side_effect=[False, False]), \
              mock.patch("u_agents.launcher.claim_issue", return_value=True), \
              mock.patch("u_agents.launcher.ensure_window",
@@ -587,7 +709,9 @@ class TestDispatchClaimRollback(unittest.TestCase):
 
     def test_aborts_before_tmux_when_claim_swap_failed(self):
         # If labels never swapped (claim returned False), don't dispatch.
-        with mock.patch("u_agents.launcher.window_exists", return_value=False), \
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists", return_value=False), \
              mock.patch("u_agents.launcher.claim_issue", return_value=False), \
              mock.patch("u_agents.launcher.ensure_window") as m_window, \
              mock.patch("u_agents.launcher.rollback_claim") as m_rollback:
@@ -597,7 +721,9 @@ class TestDispatchClaimRollback(unittest.TestCase):
             m_rollback.assert_not_called()
 
     def test_claim_exception_aborts_before_tmux(self):
-        with mock.patch("u_agents.launcher.window_exists", return_value=False), \
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists", return_value=False), \
              mock.patch("u_agents.launcher.claim_issue",
                         side_effect=RuntimeError("claim failed")), \
              mock.patch("u_agents.launcher.ensure_window") as m_window:
@@ -606,7 +732,9 @@ class TestDispatchClaimRollback(unittest.TestCase):
             m_window.assert_not_called()
 
     def test_no_rollback_on_clean_success(self):
-        with mock.patch("u_agents.launcher.window_exists", return_value=False), \
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists", return_value=False), \
              mock.patch("u_agents.launcher.claim_issue", return_value=True), \
              mock.patch("u_agents.launcher.ensure_window", return_value="r-5"), \
              mock.patch("u_agents.launcher.post_claim_comment"), \
@@ -619,7 +747,9 @@ class TestDispatchClaimRollback(unittest.TestCase):
     def test_existing_window_skips_dispatch_and_does_not_claim(self):
         # If a deterministic window already exists, refuse duplicate dispatch
         # and DO NOT swap labels.
-        with mock.patch("u_agents.launcher.window_exists", return_value=True), \
+        with mock.patch("u_agents.launcher.reverify_issue_ready",
+                        return_value=self.issue), \
+             mock.patch("u_agents.launcher.window_exists", return_value=True), \
              mock.patch("u_agents.launcher.claim_issue") as m_claim, \
              mock.patch("u_agents.launcher.send_prompt") as m_send:
             rc = dispatch_claim(self.issue, _args())
