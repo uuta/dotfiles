@@ -447,7 +447,13 @@ def check_once(
     """Single check pass. Returns the updated in-memory state."""
     state = load_state(state_file)
     live_windows = list_windows()
+    live_window_set = set(live_windows)
     db_window_lookup: Dict[str, Tuple[str, int]] = {}
+    # Windows of runs deferred this pass by a transient verification failure.
+    # Their stall state must survive the cleanup sweep below even though no
+    # pane action runs for them, so a sustained outage cannot keep resetting
+    # unchanged_checks / pinged / stall_comment_posted.
+    deferred_windows: set[str] = set()
     if db_client is None:
         windows = live_windows
     else:
@@ -458,6 +464,11 @@ def check_once(
             except RuntimeError as e:
                 # Transient/ambiguous verification failure: skip this run so the
                 # outer loop retries next tick instead of polluting DB metadata.
+                # If its tmux window is still live, preserve that window's stall
+                # state through cleanup; a gone window is left out so genuinely
+                # stale state can still expire normally.
+                if run.tmux_window in live_window_set:
+                    deferred_windows.add(run.tmux_window)
                 print(
                     f"WARN: deferring watchdog action for "
                     f"{run.repository_full_name}#{run.github_issue_number}: {e}",
@@ -478,10 +489,13 @@ def check_once(
         windows, db_window_lookup = _db_windows_for_check(
             candidate_runs,
             repos,
-            set(live_windows),
+            live_window_set,
             db_client,
         )
-    seen: set[str] = set()
+    # Seed `seen` with deferred live windows so the cleanup sweep keeps their
+    # existing WindowState. They stay out of `windows`, so no capture / ping /
+    # comment / counter update happens for them this pass.
+    seen: set[str] = set(deferred_windows)
 
     for w in windows:
         seen.add(w)

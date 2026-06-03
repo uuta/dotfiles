@@ -345,6 +345,71 @@ class TestCheckOnce(unittest.TestCase):
         self.assertEqual(db.observations, [])
         self.assertEqual(pings, [])
 
+    def test_transient_verification_preserves_live_window_state(self):
+        # Manager blocker: a transient verify_run failure must defer the run
+        # without letting the cleanup sweep delete the live window's stall
+        # state. Otherwise a sustained outage repeatedly resets the counters.
+        save_state(
+            self.state_file,
+            {"u-5": WindowState(last_hash="h", unchanged_checks=2,
+                                pinged=False, stall_comment_posted=False,
+                                last_update=10.0)},
+        )
+        db = FakeDbClient(active=[_run_row(tmux_window="u-5")])
+        captures = []
+        pings = []
+
+        def verify(_run):
+            raise RuntimeError("transient")
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [self.window],
+            capture=lambda w: captures.append(w) or "idle",
+            ping=lambda w, _dry: pings.append(w),
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=verify,
+        )
+
+        state = load_state(self.state_file)
+        self.assertIn("u-5", state)
+        self.assertEqual(state["u-5"].last_hash, "h")
+        self.assertEqual(state["u-5"].unchanged_checks, 2)
+        self.assertFalse(state["u-5"].pinged)
+        self.assertFalse(state["u-5"].stall_comment_posted)
+        self.assertEqual(state["u-5"].last_update, 10.0)
+        # No pane action this pass: state counters are left untouched.
+        self.assertEqual(captures, [])
+        self.assertEqual(pings, [])
+        self.assertEqual(db.observations, [])
+
+    def test_transient_verification_does_not_preserve_gone_window_state(self):
+        # A deferred run whose tmux window is no longer live must not pin stale
+        # local state; genuinely gone windows still expire via cleanup.
+        save_state(
+            self.state_file,
+            {"u-5": WindowState(last_hash="h", unchanged_checks=2)},
+        )
+        db = FakeDbClient(active=[_run_row(tmux_window="u-5")])
+
+        def verify(_run):
+            raise RuntimeError("transient")
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [],  # window no longer live
+            capture=lambda _w: "idle",
+            ping=lambda *_args: None,
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=verify,
+        )
+
+        self.assertEqual(load_state(self.state_file), {})
+
 
 class TestGithubIssueVerification(unittest.TestCase):
     """Comment 5: distinguish definitive vs transient issue verification."""
