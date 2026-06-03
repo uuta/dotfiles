@@ -1,4 +1,4 @@
-# Local target repositories for the v0.1 agent runner.
+# Local target repositories for the v0.2 DB-backed agent runner.
 #
 # Each entry:
 #   full_name:       GitHub repo (owner/name)

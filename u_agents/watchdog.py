@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""v0.1 lightweight watchdog for tmux PM agents.
+"""v0.2 DB-backed watchdog for tmux PM agents.
 
-Periodically captures each PM pane, compares with stored hashes, pings the
-pane if it is unchanged across several consecutive checks, and posts a
+Discovers active/stale PM runs through agent_runs, verifies external GitHub
+and tmux reality, captures each PM pane, compares with stored hashes, pings
+the pane if it is unchanged across several consecutive checks, and posts a
 single GitHub issue comment if it is still unchanged after the ping.
 
-The watchdog does not own workflow state. It only detects stalls.
+The watchdog uses local JSON only for pane-stall counters.
 """
 from __future__ import annotations
 
@@ -19,9 +20,12 @@ import tempfile
 import time
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
+from u_agents.agent_runs import ACTIVE_PHASES, AgentRun, AgentRunsClient, TERMINAL_PHASES
 from u_agents.contract import (
+    LABEL_IN_PROGRESS,
+    LABEL_READY,
     RepoConfig,
     TMUX_SESSION,
     load_config,
@@ -261,6 +265,40 @@ def post_stall_comment(
         )
 
 
+def github_issue_allows_watchdog_action(run: AgentRun) -> bool:
+    """Verify GitHub issue reality before pinging or commenting on a DB row."""
+    res = subprocess.run(
+        [
+            "gh", "issue", "view", str(run.github_issue_number),
+            "--repo", run.repository_full_name,
+            "--json", "state,labels",
+        ],
+        capture_output=True, text=True, check=False,
+    )
+    if res.returncode != 0:
+        print(
+            f"WARN: cannot verify issue for {run.repository_full_name}#"
+            f"{run.github_issue_number}: {(res.stderr or '').strip()}",
+            file=sys.stderr,
+        )
+        return False
+    try:
+        data = json.loads(res.stdout)
+    except json.JSONDecodeError as e:
+        print(
+            f"WARN: malformed issue verification JSON for "
+            f"{run.repository_full_name}#{run.github_issue_number}: {e}",
+            file=sys.stderr,
+        )
+        return False
+    if data.get("state") != "OPEN":
+        return False
+    labels = {str(label.get("name", "")) for label in data.get("labels", [])}
+    if run.phase == "claimed":
+        return LABEL_READY in labels or LABEL_IN_PROGRESS in labels
+    return LABEL_IN_PROGRESS in labels
+
+
 # ---------------------------------------------------------------------------
 # Core check
 # ---------------------------------------------------------------------------
@@ -280,6 +318,100 @@ def resolve_repo(window: str, repos: List[RepoConfig]) -> Optional[Tuple[RepoCon
     return None
 
 
+def _db_windows_for_check(
+    runs: Iterable[AgentRun],
+    repos: List[RepoConfig],
+    live_windows: set[str],
+    db_client,
+) -> Tuple[List[str], Dict[str, Tuple[str, int]]]:
+    configured_repos = {repo.full_name for repo in repos}
+    windows: List[str] = []
+    window_lookup: Dict[str, Tuple[str, int]] = {}
+    for run in runs:
+        if run.phase in TERMINAL_PHASES:
+            continue
+        if run.phase not in ACTIVE_PHASES:
+            continue
+        if run.repository_full_name not in configured_repos:
+            db_client.record_observation(
+                run.repository_full_name,
+                run.github_issue_number,
+                {
+                    "watchdog": "repository_not_configured",
+                    "repository_full_name": run.repository_full_name,
+                },
+            )
+            print(
+                f"WARN: DB row {run.repository_full_name}#"
+                f"{run.github_issue_number} is not in watchdog config; "
+                "skipping pane action",
+                file=sys.stderr,
+            )
+            continue
+        if run.tmux_window not in live_windows:
+            db_client.record_observation(
+                run.repository_full_name,
+                run.github_issue_number,
+                {
+                    "watchdog": "tmux_window_missing",
+                    "tmux_window": run.tmux_window,
+                    "pm_pane": run.pm_pane,
+                },
+            )
+            print(
+                f"WARN: DB row {run.repository_full_name}#"
+                f"{run.github_issue_number} points at missing tmux window "
+                f"{run.tmux_window}; skipping pane action",
+                file=sys.stderr,
+            )
+            continue
+        if run.pm_pane is not None and run.pm_pane != pm_pane_target(run.tmux_window):
+            db_client.record_observation(
+                run.repository_full_name,
+                run.github_issue_number,
+                {
+                    "watchdog": "pm_pane_mismatch",
+                    "tmux_window": run.tmux_window,
+                    "pm_pane": run.pm_pane,
+                    "expected_pm_pane": pm_pane_target(run.tmux_window),
+                },
+            )
+            print(
+                f"WARN: DB row {run.repository_full_name}#"
+                f"{run.github_issue_number} has pm_pane {run.pm_pane!r}; "
+                f"expected {pm_pane_target(run.tmux_window)!r}; skipping pane action",
+                file=sys.stderr,
+            )
+            continue
+        windows.append(run.tmux_window)
+        window_lookup[run.tmux_window] = (
+            run.repository_full_name,
+            run.github_issue_number,
+        )
+    return windows, window_lookup
+
+
+def _runs_for_reconciliation(db_client) -> List[AgentRun]:
+    runs_by_key: Dict[Tuple[str, int], AgentRun] = {}
+    for run in db_client.list_active_runs():
+        runs_by_key[(run.repository_full_name, run.github_issue_number)] = run
+    for run in db_client.list_stale_runs():
+        runs_by_key[(run.repository_full_name, run.github_issue_number)] = run
+        db_client.record_observation(
+            run.repository_full_name,
+            run.github_issue_number,
+            {
+                "watchdog": "stale_lease",
+                "lease_until": (
+                    run.lease_until.isoformat()
+                    if hasattr(run.lease_until, "isoformat")
+                    else str(run.lease_until)
+                ),
+            },
+        )
+    return list(runs_by_key.values())
+
+
 def check_once(
     repos: List[RepoConfig],
     state_file: Path,
@@ -291,10 +423,35 @@ def check_once(
     ping: Callable[[str, bool], bool] = send_ping,
     comment: Callable[[str, int, str, str, int, bool], None] = post_stall_comment,
     now: Callable[[], float] = time.time,
+    db_client=None,
+    verify_run: Callable[[AgentRun], bool] = github_issue_allows_watchdog_action,
 ) -> Dict[str, WindowState]:
     """Single check pass. Returns the updated in-memory state."""
     state = load_state(state_file)
-    windows = list_windows()
+    live_windows = list_windows()
+    db_window_lookup: Dict[str, Tuple[str, int]] = {}
+    if db_client is None:
+        windows = live_windows
+    else:
+        candidate_runs = []
+        for run in _runs_for_reconciliation(db_client):
+            if verify_run(run):
+                candidate_runs.append(run)
+                continue
+            db_client.record_observation(
+                run.repository_full_name,
+                run.github_issue_number,
+                {
+                    "watchdog": "github_issue_verification_failed",
+                    "phase": run.phase,
+                },
+            )
+        windows, db_window_lookup = _db_windows_for_check(
+            candidate_runs,
+            repos,
+            set(live_windows),
+            db_client,
+        )
     seen: set[str] = set()
 
     for w in windows:
@@ -325,7 +482,11 @@ def check_once(
                 and not st.stall_comment_posted
             ):
                 resolved = resolve_repo(w, repos)
-                if resolved is None:
+                if w in db_window_lookup:
+                    repo_full, num = db_window_lookup[w]
+                    comment(repo_full, num, w, text, st.unchanged_checks, dry_run)
+                    st.stall_comment_posted = True
+                elif resolved is None:
                     print(
                         f"WARN: cannot resolve repo for window {w}; skipping stall comment",
                         file=sys.stderr,
@@ -355,7 +516,7 @@ def _resolve_config(explicit: Optional[Path]) -> Path:
 
 
 def main(argv=None) -> int:
-    p = argparse.ArgumentParser(description="v0.1 PM pane watchdog")
+    p = argparse.ArgumentParser(description="v0.2 DB-backed PM pane watchdog")
     p.add_argument("--config", type=Path)
     p.add_argument("--state-dir", type=Path, default=DEFAULT_STATE_DIR)
     p.add_argument("--interval", type=int, default=60,
@@ -377,6 +538,7 @@ def main(argv=None) -> int:
     config_path = _resolve_config(args.config)
     repos = load_config(config_path)
     state_file = args.state_dir / DEFAULT_STATE_FILE
+    db_client = AgentRunsClient.from_env()
 
     def comment_with_flag(repo_full, num, w, text, unchanged, dry):
         post_stall_comment(
@@ -387,14 +549,13 @@ def main(argv=None) -> int:
     def run_once():
         check_once(
             repos, state_file, args.stall_checks, args.dry_run,
-            comment=comment_with_flag,
+            comment=comment_with_flag, db_client=db_client,
         )
 
-    if args.once:
-        run_once()
-        return 0
-
     try:
+        if args.once:
+            run_once()
+            return 0
         while True:
             try:
                 run_once()
@@ -403,6 +564,8 @@ def main(argv=None) -> int:
             time.sleep(args.interval)
     except KeyboardInterrupt:
         return 0
+    finally:
+        db_client.close()
 
 
 if __name__ == "__main__":

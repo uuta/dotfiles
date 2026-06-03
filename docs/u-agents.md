@@ -1,8 +1,9 @@
-# v0.1 local agent runner
+# v0.2 DB-backed local agent runner
 
 Small local runner around tmux + git + `gh` for the workflow described in
-[#5](https://github.com/uuta/u/issues/5). GitHub Issues / PRs / CI are the
-source of truth. There is no ops DB, no daemon, no vector store.
+[#5](https://github.com/uuta/u/issues/5). GitHub Issues / PRs / CI, tmux,
+git worktrees, and `tmp/review-result.json` remain the external realities.
+PostgreSQL `agent_runs` coordinates claimed work across runner processes.
 
 ## Components
 
@@ -13,6 +14,7 @@ source of truth. There is no ops DB, no daemon, no vector store.
 | Launcher   | `u_agents/launcher.py`          | Short-lived starter/resumer. Picks one ready issue and hands off PM. |
 | PM prompt  | `u_agents/prompts/pm.md`        | The contract sent into the PM pane. PM owns the per-issue workflow.  |
 | Watchdog   | `u_agents/watchdog.py`          | Detects stalled PM panes. Pings, then comments once if still stuck.  |
+| PR Watcher | `u_agents/pr_watcher.py`        | Watches verified PR state and updates PR phases in `agent_runs`.     |
 | DB schema   | `u_agents/db/001_agent_runs.sql` | v0.2 PostgreSQL schema for claimed runs.                         |
 | DB docs     | `u_agents/db/README.md`         | Column ownership, phase contract, and PR watcher rules.             |
 | Config     | `u_agents/config/repositories.yml` | Local allowlist of repositories the Launcher may operate on.     |
@@ -28,8 +30,13 @@ source of truth. There is no ops DB, no daemon, no vector store.
   `U_AGENTS_CLAUDE_COMMAND` if needed.)
 - `git`
 - `yq` (MikeFarah; only needed for YAML configs — `.json` configs do not require it)
-- Docker, only for the v0.2 PostgreSQL control plane. It is not required for
-  the current launcher/watchdog runtime.
+- Docker, for the local PostgreSQL control plane.
+- `psycopg` for live DB runtime connections. The import is lazy, so unit tests
+  and `--help` paths still work without it:
+
+  ```sh
+  python3 -m pip install 'psycopg[binary]'
+  ```
 
 ## Configuration
 
@@ -137,7 +144,7 @@ The v0.2 database contract is defined in `u_agents/db/README.md` and
 claimed work only. GitHub Issues with `status:ready` remain the queue source
 of truth; DB rows are created only after the Launcher claims or leases work.
 
-Claim order for the future DB-backed Launcher is:
+Launcher claim order is:
 
 1. Observe a `status:ready` GitHub issue.
 2. Acquire/upsert the DB claim and lease in `agent_runs`.
@@ -158,6 +165,10 @@ Required runner environment for DB-backed operation:
 | `U_AGENTS_MACHINE_ID` | Stable machine identity from config/env. |
 
 Agents must not invent `U_AGENTS_RUNNER_ID` or `U_AGENTS_MACHINE_ID`.
+Blank values and placeholders such as `runner`, `machine`, `placeholder`,
+`changeme`, `todo`, or `example` are rejected. Launcher dry-runs require the
+runner and machine identity because the dry-run output includes the DB claim
+lease owner; live DB paths also require `U_AGENTS_DATABASE_URL` and `psycopg`.
 
 ## Commands
 
@@ -172,6 +183,7 @@ mise run launcher-dry-run   # python3 -m u_agents.launcher --dry-run
 mise run launcher           # python3 -m u_agents.launcher
 mise run watchdog-dry-run   # python3 -m u_agents.watchdog --once --dry-run
 mise run watchdog           # python3 -m u_agents.watchdog --once
+mise run pr-watcher         # python3 -m u_agents.pr_watcher --once
 mise run test               # python3 -m unittest discover tests
 mise run db-up              # docker compose -f compose.yml up -d --wait postgres
 mise run db-psql            # psql into local Postgres
@@ -203,7 +215,8 @@ python3 -m u_agents.launcher --config ~/my-repos.yml
 ```
 
 `--dry-run` suppresses all writes (label swap, claim comment, tmux window
-creation, prompt send) but still reads issue state from GitHub.
+creation, prompt send, DB write) but still reads issue state from GitHub and
+prints the `agent_runs` claim/lease and `pm_started` update it would perform.
 
 #### Resume and partial-claim recovery
 
@@ -224,6 +237,11 @@ Direct-lookup mode (`--issue N --repo R`) bypasses the queue and supports
 both fresh claim and resume of an already-claimed issue.
 
 ### Watchdog
+
+The watchdog discovers active and stale work from `agent_runs`, then verifies
+GitHub issue state and live tmux windows before pinging or commenting. If a DB
+row points at a missing tmux window/pane, the watchdog records an observation
+in `agent_runs` and skips pane action rather than trusting the row blindly.
 
 ```sh
 # single check pass and exit (useful from cron)
@@ -251,17 +269,44 @@ Pane content is never posted unless `--include-pane-tail` is set; when set,
 the tail is HTML-escaped inside a `<pre>` block to neutralize Markdown
 fence-injection from captured output.
 
-State is persisted to `<dotfiles checkout>/u_agents/state/watchdog.json` by
-default, anchored to the installed `u_agents` package directory rather than
-the process current working directory. Override with `--state-dir` when you
-want a different runtime location. The state write uses atomic
-`tempfile + os.replace`, so a crash mid-write cannot corrupt the file.
-`u_agents/state/` is local runtime data and ignored by git. If the state
-file does become unreadable (manual edit, disk truncation), `load_state`
-warns and resets to empty instead of deadlocking the watchdog loop.
+`agent_runs` is the shared task/phase source. The local
+`<dotfiles checkout>/u_agents/state/watchdog.json` file stores only pane-stall
+details: last pane hash, unchanged-check count, pinged flag, and whether a
+stall comment was already posted. It is anchored to the installed `u_agents`
+package directory rather than the process current working directory. Override
+with `--state-dir` when you want a different runtime location. The state write
+uses atomic `tempfile + os.replace`, so a crash mid-write cannot corrupt the
+file. `u_agents/state/` is local runtime data and ignored by git. If the state
+file does become unreadable (manual edit, disk truncation), `load_state` warns
+and resets to empty instead of deadlocking the watchdog loop.
 
 Stalled-once-and-commented windows do not get re-commented until their pane
 output changes.
+
+### PR Watcher
+
+The PR watcher reads `agent_runs` rows in `pr_open`, `pr_watching`, and
+`ready_to_merge`, then verifies GitHub PR reality before any transition:
+the PR must exist, its head branch must match `branch_name`, and merged/closed,
+CI, and review-comment state are re-read from GitHub.
+
+```sh
+python3 -m u_agents.pr_watcher --once
+mise run pr-watcher
+```
+
+Transition rules:
+
+1. Merged PR -> `done`.
+2. Must-fix PR comments with `pr_review_fix_rounds = 0` -> `fixing`, increment
+   `pr_review_fix_rounds`, and assign one automated fix loop.
+3. Must-fix PR comments with `pr_review_fix_rounds >= 1` -> `blocked`.
+4. Green CI and no must-fix comments -> `ready_to_merge`.
+5. Otherwise -> `pr_watching`.
+
+The watcher records `pr_number`, `pr_review_fix_rounds`, `block_reason`, and
+small observations in `metadata`. It never auto-merges; `ready_to_merge` means
+the user/operator can merge after their own final check.
 
 Suggested cron entry (single check per minute):
 
@@ -361,10 +406,13 @@ GitHub issue with status:ready
         ▼
    Launcher picks one
         │
+        ├─ acquires/upserts agent_runs claim + lease
+        ├─ re-verifies issue open + status:ready
         ├─ swaps status:ready -> status:in-progress
         ├─ posts claim comment with tmux/worktree/branch coords
         ├─ ensures `agents:<window>` exists
-        └─ sends PM prompt into the window
+        ├─ sends PM prompt into the window
+        └─ writes phase=pm_started with tmux coords
                 │
                 ▼
         PM (tmux pane)
@@ -376,20 +424,30 @@ GitHub issue with status:ready
                 ├─ fix loop bounded to 3 rounds
                 └─ opens review-ready PR with `Closes #N`
 
+        PR Watcher
+                │
+                ├─ verifies PR exists and head branch matches
+                ├─ watches CI + review comments
+                ├─ assigns at most one automated PR review fix loop
+                └─ sets ready_to_merge / done / blocked
+
         Watchdog (separate loop)
                 │
+                ├─ reads active/stale agent_runs rows
+                ├─ verifies GitHub issue + tmux reality
                 ├─ capture-pane → hash → compare
                 ├─ N unchanged checks → tmux send-keys ping
                 └─ 2N unchanged after ping → one issue comment, then quiet
 ```
 
-## What this v0.1 deliberately does not do
+## Boundaries
 
-- No Postgres / Redis / Temporal / message queues.
 - No long-running daemon.
 - No semantic memory / vector DB.
-- No multi-machine locking. Single-Launcher single-machine assumption.
-- No PR / CI / merged status labels — those are reconstructed from GitHub.
+- No queued/discovered ready issues in the DB before launcher claim.
+- No PM/engineer/reviewer creation of the initial `agent_runs` row.
+- No absolute worktree paths in `agent_runs`; store `worktree_basename` only.
+- No automatic PR merge.
 - No automatic worktree cleanup. Cleanup happens manually after PR merge.
 
 ## Verification
@@ -398,8 +456,10 @@ GitHub issue with status:ready
 python3 -m unittest discover tests
 python3 -m u_agents.launcher --help
 python3 -m u_agents.watchdog --help
-python3 -m u_agents.watchdog --once --dry-run   # works without any active tmux windows
+python3 -m u_agents.pr_watcher --help
 ```
 
-A live Launcher dry-run requires `gh auth login` against the configured
-repositories.
+Live `launcher`, `watchdog`, and `pr_watcher` runs require `gh auth login`, DB
+environment variables, `psycopg`, and reachable local Postgres. A launcher
+dry-run also requires `U_AGENTS_RUNNER_ID` and `U_AGENTS_MACHINE_ID` so it can
+show the DB claim owner it would use.

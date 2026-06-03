@@ -32,6 +32,19 @@ PR_REVIEW_FIX_MAX_ROUNDS = 1
 ENV_DATABASE_URL = "U_AGENTS_DATABASE_URL"
 ENV_RUNNER_ID = "U_AGENTS_RUNNER_ID"
 ENV_MACHINE_ID = "U_AGENTS_MACHINE_ID"
+_PLACEHOLDER_IDENTITIES = {
+    "runner",
+    "runner-id",
+    "runner_id",
+    "machine",
+    "machine-id",
+    "machine_id",
+    "placeholder",
+    "changeme",
+    "change-me",
+    "todo",
+    "example",
+}
 
 
 @dataclass(frozen=True)
@@ -58,6 +71,14 @@ def _require_env(env: Mapping[str, object], name: str) -> str:
     return value
 
 
+def validate_identity_value(value: str, name: str) -> str:
+    if not isinstance(value, str) or value.strip() == "":
+        raise ConfigError(f"{name} is required and must be non-empty")
+    if value.strip().lower() in _PLACEHOLDER_IDENTITIES:
+        raise ConfigError(f"{name} must not be a placeholder identity")
+    return value
+
+
 def database_url_from_env(env: Mapping[str, object] | None = None) -> str:
     """Read and validate the PostgreSQL connection URL from environment."""
     url = _require_env(os.environ if env is None else env, ENV_DATABASE_URL)
@@ -76,8 +97,12 @@ def load_runner_identity(env: Mapping[str, object] | None = None) -> RunnerIdent
     """
     source = os.environ if env is None else env
     return RunnerIdentity(
-        runner_id=_require_env(source, ENV_RUNNER_ID),
-        machine_id=_require_env(source, ENV_MACHINE_ID),
+        runner_id=validate_identity_value(
+            _require_env(source, ENV_RUNNER_ID), ENV_RUNNER_ID,
+        ),
+        machine_id=validate_identity_value(
+            _require_env(source, ENV_MACHINE_ID), ENV_MACHINE_ID,
+        ),
     )
 
 

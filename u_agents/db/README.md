@@ -33,6 +33,17 @@ Default local development URL:
 postgresql://u_agents:u_agents_dev_password@127.0.0.1:54329/u_agents
 ```
 
+## Python runtime dependency
+
+The runtime DB client imports `psycopg` only when opening a real database
+connection. Unit tests and `--help` paths do not require it. Install it in the
+Python environment that runs launchd/mise tasks before using the live DB-backed
+launcher, watchdog, or PR watcher:
+
+```sh
+python3 -m pip install 'psycopg[binary]'
+```
+
 ## Required runner configuration
 
 Runners must read these values from configuration or environment. Agents must
@@ -40,9 +51,9 @@ not invent placeholder identities.
 
 | Name | Meaning | Validation |
 | ---- | ------- | ---------- |
-| `U_AGENTS_DATABASE_URL` | PostgreSQL connection URL. | Required, non-empty. |
-| `U_AGENTS_RUNNER_ID` | Stable runner process/service identity. | Required, non-empty. |
-| `U_AGENTS_MACHINE_ID` | Stable machine/host identity. | Required, non-empty. |
+| `U_AGENTS_DATABASE_URL` | PostgreSQL connection URL. | Required, non-empty, `postgresql://` or `postgres://`. |
+| `U_AGENTS_RUNNER_ID` | Stable runner process/service identity. | Required, non-empty, not a placeholder such as `runner`, `placeholder`, `changeme`, or `todo`. |
+| `U_AGENTS_MACHINE_ID` | Stable machine/host identity. | Required, non-empty, not a placeholder such as `machine`, `placeholder`, `changeme`, or `example`. |
 
 ## Table: agent_runs
 
@@ -121,3 +132,7 @@ Automated PR review comment fixes are allowed at most once.
 
 Review comment classification must distinguish must-fix items from optional,
 rejected, stale, or already-addressed comments before applying these rules.
+
+The PR watcher never merges a PR. `ready_to_merge` is a notification state for
+the user/operator after GitHub PR existence, head branch, CI, and must-fix
+comment state have been verified.
