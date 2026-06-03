@@ -1,4 +1,6 @@
+import json
 import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -319,6 +321,96 @@ class TestCheckOnce(unittest.TestCase):
             db.observations[0][2]["watchdog"],
             "github_issue_verification_failed",
         )
+
+    def test_transient_verification_error_is_not_recorded_as_metadata(self):
+        # Comment 5: a transient verification failure must be retried by the
+        # outer loop, not stored as github_issue_verification_failed metadata.
+        db = FakeDbClient(active=[_run_row()])
+        pings = []
+
+        def verify(_run):
+            raise RuntimeError("transient network error")
+
+        check_once(
+            [self.repo], self.state_file, stall_checks=1, dry_run=False,
+            list_windows=lambda: [self.window],
+            capture=lambda _w: "idle",
+            ping=lambda w, _dry: pings.append(w),
+            comment=lambda *_args: None,
+            now=self.clock,
+            db_client=db,
+            verify_run=verify,
+        )
+
+        self.assertEqual(db.observations, [])
+        self.assertEqual(pings, [])
+
+
+class TestGithubIssueVerification(unittest.TestCase):
+    """Comment 5: distinguish definitive vs transient issue verification."""
+
+    @staticmethod
+    def _completed(returncode=0, stdout="", stderr=""):
+        return subprocess.CompletedProcess(
+            args=["gh"], returncode=returncode, stdout=stdout, stderr=stderr,
+        )
+
+    def test_transient_error_raises_runtime_error(self):
+        proc = self._completed(
+            returncode=1, stderr="error connecting to api.github.com: timeout",
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+
+    def test_not_found_returns_false(self):
+        proc = self._completed(
+            returncode=1,
+            stderr="GraphQL: Could not resolve to an Issue with the number of 5.",
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            self.assertFalse(
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+            )
+
+    def test_dns_resolution_failure_is_transient_not_absence(self):
+        # "Could not resolve host" is a DNS/network error, not a missing issue.
+        proc = self._completed(
+            returncode=1, stderr="Could not resolve host: api.github.com",
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+
+    def test_malformed_json_raises_runtime_error(self):
+        proc = self._completed(returncode=0, stdout="<html>502</html>")
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+
+    def test_closed_issue_returns_false(self):
+        proc = self._completed(
+            returncode=0, stdout=json.dumps({"state": "CLOSED", "labels": []}),
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            self.assertFalse(
+                watchdog.github_issue_allows_watchdog_action(_run_row())
+            )
+
+    def test_open_issue_with_in_progress_label_is_allowed(self):
+        from u_agents.contract import LABEL_IN_PROGRESS
+        proc = self._completed(
+            returncode=0,
+            stdout=json.dumps(
+                {"state": "OPEN", "labels": [{"name": LABEL_IN_PROGRESS}]}
+            ),
+        )
+        with mock.patch("u_agents.watchdog.subprocess.run", return_value=proc):
+            self.assertTrue(
+                watchdog.github_issue_allows_watchdog_action(
+                    _run_row(phase="engineering")
+                )
+            )
 
 
 class TestCheckOnceUnknownRepo(unittest.TestCase):

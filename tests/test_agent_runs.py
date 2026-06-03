@@ -241,6 +241,15 @@ class TestAgentRunsClientWrites(unittest.TestCase):
         stale_sql, _stale_params = stale_conn.calls[0]
         self.assertIn("lease_until < now()", stale_sql)
 
+    def test_list_methods_commit_after_select(self):
+        # Comment 4: a bare SELECT opens a transaction in PostgreSQL; the list
+        # (_fetch_all) methods must commit so the connection is left clean.
+        for method in ("list_active_runs", "list_stale_runs", "list_pr_watch_runs"):
+            conn = FakeConn([_row(phase="pr_watching", pr_number=45)])
+            client = AgentRunsClient(conn, self.identity)
+            getattr(client, method)()
+            self.assertEqual(conn.commits, 1, f"{method} should commit once")
+
 
 if __name__ == "__main__":
     unittest.main()

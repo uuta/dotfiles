@@ -265,8 +265,20 @@ def post_stall_comment(
         )
 
 
+# "could not resolve to" matches GitHub GraphQL missing-resource errors
+# (e.g. "Could not resolve to an Issue ..."). It deliberately excludes
+# transient DNS/network failures like "Could not resolve host: api.github.com".
+_ISSUE_ABSENCE_MARKERS = ("not found", "could not resolve to", "404")
+
+
 def github_issue_allows_watchdog_action(run: AgentRun) -> bool:
-    """Verify GitHub issue reality before pinging or commenting on a DB row."""
+    """Verify GitHub issue reality before pinging or commenting on a DB row.
+
+    Returns ``False`` for definitive non-actionable reality (issue not OPEN,
+    not found, or missing the required label). Raises ``RuntimeError`` for
+    transient/ambiguous CLI/API failures so the loop logs and retries instead
+    of recording a false ``github_issue_verification_failed`` observation.
+    """
     res = subprocess.run(
         [
             "gh", "issue", "view", str(run.github_issue_number),
@@ -276,21 +288,27 @@ def github_issue_allows_watchdog_action(run: AgentRun) -> bool:
         capture_output=True, text=True, check=False,
     )
     if res.returncode != 0:
-        print(
-            f"WARN: cannot verify issue for {run.repository_full_name}#"
-            f"{run.github_issue_number}: {(res.stderr or '').strip()}",
-            file=sys.stderr,
+        stderr = (res.stderr or "").strip()
+        if any(marker in stderr.lower() for marker in _ISSUE_ABSENCE_MARKERS):
+            print(
+                f"WARN: cannot verify issue for {run.repository_full_name}#"
+                f"{run.github_issue_number}: {stderr}",
+                file=sys.stderr,
+            )
+            return False
+        raise RuntimeError(
+            f"cannot verify issue {run.repository_full_name}#"
+            f"{run.github_issue_number} (exit {res.returncode}); "
+            f"treating as transient: {stderr}"
         )
-        return False
     try:
         data = json.loads(res.stdout)
     except json.JSONDecodeError as e:
-        print(
-            f"WARN: malformed issue verification JSON for "
-            f"{run.repository_full_name}#{run.github_issue_number}: {e}",
-            file=sys.stderr,
-        )
-        return False
+        # Malformed CLI output is ambiguous, not proof the issue is gone.
+        raise RuntimeError(
+            f"malformed issue verification JSON for "
+            f"{run.repository_full_name}#{run.github_issue_number}: {e}"
+        ) from e
     if data.get("state") != "OPEN":
         return False
     labels = {str(label.get("name", "")) for label in data.get("labels", [])}
@@ -435,7 +453,18 @@ def check_once(
     else:
         candidate_runs = []
         for run in _runs_for_reconciliation(db_client):
-            if verify_run(run):
+            try:
+                allowed = verify_run(run)
+            except RuntimeError as e:
+                # Transient/ambiguous verification failure: skip this run so the
+                # outer loop retries next tick instead of polluting DB metadata.
+                print(
+                    f"WARN: deferring watchdog action for "
+                    f"{run.repository_full_name}#{run.github_issue_number}: {e}",
+                    file=sys.stderr,
+                )
+                continue
+            if allowed:
                 candidate_runs.append(run)
                 continue
             db_client.record_observation(

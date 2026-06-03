@@ -30,18 +30,32 @@ def _run(cmd: list[str]) -> subprocess.CompletedProcess:
 
 
 def _status_checks_green(status_rollup) -> bool:
+    """Whether every status-rollup entry is green.
+
+    GitHub's ``statusCheckRollup`` mixes two GraphQL shapes:
+    - ``CheckRun`` entries expose ``status`` (e.g. ``COMPLETED``) and
+      ``conclusion`` (``SUCCESS``/``SKIPPED``/``NEUTRAL``/``FAILURE``/...).
+    - ``StatusContext`` entries (classic commit statuses) expose ``state``
+      (``SUCCESS``/``PENDING``/``FAILURE``/``ERROR``/``EXPECTED``).
+    A successful classic status counts as green; pending/failing/error classic
+    statuses do not.
+    """
     if not isinstance(status_rollup, list) or not status_rollup:
         return False
-    conclusions = []
     for check in status_rollup:
         if not isinstance(check, dict):
             return False
-        conclusion = check.get("conclusion")
-        status = check.get("status")
-        if conclusion is None and status != "COMPLETED":
-            return False
-        conclusions.append(conclusion)
-    return all(c in ("SUCCESS", "SKIPPED", "NEUTRAL") for c in conclusions)
+        if "state" in check:
+            if check.get("state") != "SUCCESS":
+                return False
+        else:
+            status = check.get("status")
+            conclusion = check.get("conclusion")
+            if status != "COMPLETED" or conclusion not in (
+                "SUCCESS", "SKIPPED", "NEUTRAL"
+            ):
+                return False
+    return True
 
 
 _MUST_FIX_MARKERS = (
@@ -88,6 +102,11 @@ def _body_has_must_fix_signal(body: str) -> bool:
 def extract_must_fix_review_comment_keys(pr_data: dict) -> tuple[str, ...]:
     """Classify PR comments/reviews with explicit must-fix signals.
 
+    Only ``comments`` and ``latestReviews`` (the latest review per reviewer)
+    are considered. The historical ``reviews`` list is intentionally excluded
+    so a superseded ``CHANGES_REQUESTED`` review that was later replaced by an
+    ``APPROVED`` review does not keep a PR blocked forever.
+
     This is intentionally conservative and testable. Runtime callers still
     pass the resulting truth through `PrReality`, and tests can inject richer
     classification without depending on GitHub's JSON shape.
@@ -95,7 +114,6 @@ def extract_must_fix_review_comment_keys(pr_data: dict) -> tuple[str, ...]:
     keys: list[str] = []
     for prefix, field in (
         ("comment", "comments"),
-        ("review", "reviews"),
         ("latest_review", "latestReviews"),
     ):
         values = pr_data.get(field) or []
@@ -111,6 +129,23 @@ def extract_must_fix_review_comment_keys(pr_data: dict) -> tuple[str, ...]:
     return tuple(keys)
 
 
+# "could not resolve to" matches GitHub GraphQL missing-resource errors
+# (e.g. "Could not resolve to a PullRequest ..."). It deliberately excludes
+# transient DNS/network failures like "Could not resolve host: api.github.com".
+_PR_ABSENCE_MARKERS = ("not found", "could not resolve to", "404")
+
+
+def _missing_pr_reality(pr_number: int) -> PrReality:
+    return PrReality(
+        exists=False,
+        pr_number=pr_number,
+        head_branch="",
+        merged=False,
+        ci_green=False,
+        must_fix_review_comments=False,
+    )
+
+
 def fetch_pr_reality(repository_full_name: str, pr_number: int) -> PrReality:
     res = _run([
         "gh", "pr", "view", str(pr_number),
@@ -118,29 +153,28 @@ def fetch_pr_reality(repository_full_name: str, pr_number: int) -> PrReality:
         "--json",
         (
             "number,headRefName,state,merged,statusCheckRollup,reviewDecision,"
-            "comments,reviews,latestReviews"
+            "comments,latestReviews"
         ),
     ])
     if res.returncode != 0:
-        return PrReality(
-            exists=False,
-            pr_number=pr_number,
-            head_branch="",
-            merged=False,
-            ci_green=False,
-            must_fix_review_comments=False,
+        stderr = (res.stderr or "").lower()
+        if any(marker in stderr for marker in _PR_ABSENCE_MARKERS):
+            return _missing_pr_reality(pr_number)
+        # Transient network/rate-limit/outage: do not let it masquerade as a
+        # definitively missing PR (which would terminally block the run).
+        raise RuntimeError(
+            f"gh pr view failed for {repository_full_name}#{pr_number} "
+            f"(exit {res.returncode}); treating as transient: "
+            f"{(res.stderr or '').strip()}"
         )
     try:
         data = json.loads(res.stdout)
-    except json.JSONDecodeError:
-        return PrReality(
-            exists=False,
-            pr_number=pr_number,
-            head_branch="",
-            merged=False,
-            ci_green=False,
-            must_fix_review_comments=False,
-        )
+    except json.JSONDecodeError as e:
+        # Malformed CLI output is ambiguous, not proof the PR is gone.
+        raise RuntimeError(
+            f"gh pr view returned unparseable JSON for "
+            f"{repository_full_name}#{pr_number}: {e}"
+        ) from e
     state = data.get("state")
     must_fix_comment_keys = extract_must_fix_review_comment_keys(data)
     if not must_fix_comment_keys and data.get("reviewDecision") == "CHANGES_REQUESTED":
@@ -262,7 +296,17 @@ def check_once(
                 assign_fix=assign_fix,
             ))
             continue
-        reality = fetch_reality(run.repository_full_name, run.pr_number)
+        try:
+            reality = fetch_reality(run.repository_full_name, run.pr_number)
+        except RuntimeError as e:
+            # Transient/ambiguous fetch failure: skip this run so it is retried
+            # on the next pass instead of being terminally blocked.
+            print(
+                f"WARN: deferring PR watch for {run.repository_full_name}#"
+                f"{run.github_issue_number}: {e}",
+                file=sys.stderr,
+            )
+            continue
         updated.append(reconcile_pr_run(
             run,
             reality,

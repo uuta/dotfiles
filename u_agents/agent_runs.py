@@ -495,6 +495,12 @@ class AgentRunsClient:
         with self.conn.cursor() as cur:
             cur.execute(sql, params)
             rows = cur.fetchall()
+        # A bare SELECT opens a transaction in PostgreSQL; commit so the
+        # connection does not linger 'idle in transaction' across loop passes
+        # (mirrors `_fetch_one`).
+        commit = getattr(self.conn, "commit", None)
+        if commit is not None:
+            commit()
         return rows
 
     def _require_row(self, sql: str, params: Mapping[str, Any]) -> AgentRun:

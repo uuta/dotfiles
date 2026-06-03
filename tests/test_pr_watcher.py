@@ -1,11 +1,16 @@
+import json
+import subprocess
 import unittest
 from dataclasses import replace
+from unittest import mock
 
 from u_agents.agent_runs import AgentRun
 from u_agents.pr_watcher import (
     PrReality,
+    _status_checks_green,
     check_once,
     extract_must_fix_review_comment_keys,
+    fetch_pr_reality,
     reconcile_pr_run,
 )
 
@@ -104,6 +109,56 @@ class FakeDbClient:
         )
 
 
+class TestStatusChecksGreen(unittest.TestCase):
+    """Comment 1: support both CheckRun and StatusContext rollup entries."""
+
+    def test_checkrun_completed_success_is_green(self):
+        self.assertTrue(_status_checks_green([
+            {"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"},
+        ]))
+
+    def test_checkrun_in_progress_is_not_green(self):
+        self.assertFalse(_status_checks_green([
+            {"__typename": "CheckRun", "status": "IN_PROGRESS", "conclusion": None},
+        ]))
+
+    def test_classic_status_context_success_is_green(self):
+        self.assertTrue(_status_checks_green([
+            {"__typename": "StatusContext", "context": "ci/circleci", "state": "SUCCESS"},
+        ]))
+
+    def test_classic_status_context_pending_is_not_green(self):
+        self.assertFalse(_status_checks_green([
+            {"__typename": "StatusContext", "context": "ci/circleci", "state": "PENDING"},
+        ]))
+
+    def test_classic_status_context_failure_is_not_green(self):
+        self.assertFalse(_status_checks_green([
+            {"__typename": "StatusContext", "context": "ci/circleci", "state": "FAILURE"},
+        ]))
+
+    def test_classic_status_context_error_is_not_green(self):
+        self.assertFalse(_status_checks_green([
+            {"__typename": "StatusContext", "context": "ci/circleci", "state": "ERROR"},
+        ]))
+
+    def test_mixed_checkrun_and_status_context_all_green(self):
+        self.assertTrue(_status_checks_green([
+            {"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SKIPPED"},
+            {"__typename": "StatusContext", "context": "ci/x", "state": "SUCCESS"},
+        ]))
+
+    def test_mixed_with_failing_classic_status_is_not_green(self):
+        self.assertFalse(_status_checks_green([
+            {"__typename": "CheckRun", "status": "COMPLETED", "conclusion": "SUCCESS"},
+            {"__typename": "StatusContext", "context": "ci/x", "state": "FAILURE"},
+        ]))
+
+    def test_empty_or_non_list_is_not_green(self):
+        self.assertFalse(_status_checks_green([]))
+        self.assertFalse(_status_checks_green(None))
+
+
 class TestCommentClassification(unittest.TestCase):
     def test_extracts_explicit_must_fix_comments(self):
         keys = extract_must_fix_review_comment_keys({
@@ -118,6 +173,35 @@ class TestCommentClassification(unittest.TestCase):
         })
 
         self.assertEqual(keys, ("comment:c2", "latest_review:r2"))
+
+    def test_superseded_historical_review_is_ignored(self):
+        # Comment 2: an old CHANGES_REQUESTED review that was later superseded by
+        # an APPROVED latest review must not keep the PR classified as must-fix.
+        keys = extract_must_fix_review_comment_keys({
+            "comments": [],
+            "reviews": [
+                {"id": "r1", "state": "CHANGES_REQUESTED", "body": "fix this"},
+                {"id": "r1b", "state": "APPROVED", "body": "lgtm now"},
+            ],
+            "latestReviews": [
+                {"id": "r1b", "state": "APPROVED", "body": "lgtm now"},
+            ],
+        })
+
+        self.assertEqual(keys, ())
+
+    def test_latest_changes_requested_still_classified(self):
+        keys = extract_must_fix_review_comment_keys({
+            "comments": [],
+            "reviews": [
+                {"id": "r1", "state": "APPROVED", "body": "lgtm"},
+            ],
+            "latestReviews": [
+                {"id": "r2", "state": "CHANGES_REQUESTED", "body": "needs work"},
+            ],
+        })
+
+        self.assertEqual(keys, ("latest_review:r2",))
 
 
 class TestPrWatcherTransitions(unittest.TestCase):
@@ -230,6 +314,89 @@ class TestPrWatcherTransitions(unittest.TestCase):
 
         self.assertEqual(fetched, [("o/r", 45)])
         self.assertEqual(updated[0].phase, "pr_watching")
+
+    def test_check_once_defers_run_on_transient_fetch_error(self):
+        # Comment 3: a transient fetch failure must not block the run; it is
+        # skipped this pass and retried later, never marked blocked.
+        db = FakeDbClient([_run(phase="pr_open")])
+
+        def boom(_repo, _pr):
+            raise RuntimeError("transient github outage")
+
+        updated = check_once(db, fetch_reality=boom)
+
+        self.assertEqual(updated, [])
+        self.assertEqual(db.calls, [])
+
+
+class TestFetchPrReality(unittest.TestCase):
+    """Comment 3: definitive not-found vs transient/parse failures."""
+
+    @staticmethod
+    def _completed(returncode=0, stdout="", stderr=""):
+        return subprocess.CompletedProcess(
+            args=["gh"], returncode=returncode, stdout=stdout, stderr=stderr,
+        )
+
+    def test_definitive_not_found_returns_exists_false(self):
+        proc = self._completed(
+            returncode=1,
+            stderr="GraphQL: Could not resolve to a PullRequest with the number of 999.",
+        )
+        with mock.patch("u_agents.pr_watcher._run", return_value=proc):
+            reality = fetch_pr_reality("o/r", 999)
+
+        self.assertFalse(reality.exists)
+        self.assertEqual(reality.pr_number, 999)
+
+    def test_transient_failure_raises_runtime_error(self):
+        proc = self._completed(
+            returncode=1,
+            stderr="error connecting to api.github.com: dial tcp: i/o timeout",
+        )
+        with mock.patch("u_agents.pr_watcher._run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                fetch_pr_reality("o/r", 45)
+
+    def test_dns_resolution_failure_is_transient_not_absence(self):
+        # "Could not resolve host" is a DNS/network error, not a missing PR.
+        proc = self._completed(
+            returncode=1, stderr="Could not resolve host: api.github.com",
+        )
+        with mock.patch("u_agents.pr_watcher._run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                fetch_pr_reality("o/r", 45)
+
+    def test_malformed_json_raises_runtime_error(self):
+        proc = self._completed(returncode=0, stdout="<html>500</html>")
+        with mock.patch("u_agents.pr_watcher._run", return_value=proc):
+            with self.assertRaises(RuntimeError):
+                fetch_pr_reality("o/r", 45)
+
+    def test_valid_payload_parses_into_reality(self):
+        payload = json.dumps({
+            "number": 45,
+            "headRefName": "feat/12",
+            "state": "OPEN",
+            "merged": False,
+            "statusCheckRollup": [
+                {"__typename": "StatusContext", "context": "ci", "state": "SUCCESS"},
+            ],
+            "reviewDecision": None,
+            "comments": [],
+            "latestReviews": [],
+        })
+        with mock.patch(
+            "u_agents.pr_watcher._run",
+            return_value=self._completed(returncode=0, stdout=payload),
+        ):
+            reality = fetch_pr_reality("o/r", 45)
+
+        self.assertTrue(reality.exists)
+        self.assertEqual(reality.pr_number, 45)
+        self.assertEqual(reality.head_branch, "feat/12")
+        self.assertTrue(reality.ci_green)
+        self.assertFalse(reality.must_fix_review_comments)
 
 
 if __name__ == "__main__":
