@@ -1,0 +1,23 @@
+# u-agents runner environment.
+#
+# Copy to ~/.u_agents_env.zsh and fill in real values, then start (or restart)
+# the tmux "agents" session so the PM pane and any `python3 -m u_agents.*` it
+# runs (e.g. mark_pr_open) inherit these. The real file lives outside the
+# dotfiles repo and is never committed; keep secrets here, not in tracked files.
+#
+#   cp .u_agents_env.zsh.template ~/.u_agents_env.zsh
+#   chmod 600 ~/.u_agents_env.zsh
+#   $EDITOR ~/.u_agents_env.zsh
+#
+# .zshrc sources ~/.u_agents_env.zsh when present. launchd-managed launcher /
+# watchdog jobs read the same variables from their plist EnvironmentVariables.
+
+# PostgreSQL control-plane URL. The value below is the local compose.yml dev
+# default; change it for any other database.
+export U_AGENTS_DATABASE_URL="postgresql://u_agents:u_agents_dev_password@127.0.0.1:54329/u_agents"
+
+# Stable identities. These MUST be set to real values: the placeholders
+# "runner" / "machine" are rejected by identity validation so an unedited copy
+# fails loudly instead of claiming work under a bogus identity.
+export U_AGENTS_RUNNER_ID="runner"
+export U_AGENTS_MACHINE_ID="machine"

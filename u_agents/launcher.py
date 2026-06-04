@@ -610,6 +610,16 @@ def render_pm_prompt(template_path: Path, issue: Issue, window: str) -> str:
         "tmux_session": TMUX_SESSION,
         "tmux_window": window,
         "pm_pane": pm_pane_target(window),
+        # Dotfiles checkout root that contains the `u_agents/` package. The PM
+        # cd's into the target repo worktree, which does not have u_agents on
+        # the path, so DB helpers must be invoked with this on PYTHONPATH.
+        # Shell-quoted so paths with spaces stay safe.
+        "u_agents_root": shlex.quote(str(PACKAGE_DIR.parent)),
+        # The interpreter running this launcher, which has already imported
+        # psycopg via AgentRunsClient.from_env(). The PM must reuse it instead
+        # of a bare `python3`, which mise/PATH in the target worktree may
+        # resolve to a Python without psycopg. Shell-quoted for safety.
+        "u_agents_python": shlex.quote(sys.executable),
     }
     tmpl = template_path.read_text(encoding="utf-8")
 

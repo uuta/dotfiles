@@ -227,6 +227,40 @@ class TestAgentRunsClientWrites(unittest.TestCase):
         self.assertEqual(params["phase"], "fixing")
         self.assertTrue(params["increment_fix_rounds"])
 
+    def test_mark_pr_open_sets_pr_open_phase_and_number(self):
+        conn = FakeConn([_row(phase="pr_open", pr_number=240)])
+        client = AgentRunsClient(conn, self.identity)
+
+        run = client.mark_pr_open("o/r", 12, pr_number=240)
+
+        self.assertEqual(run.phase, "pr_open")
+        self.assertEqual(run.pr_number, 240)
+        _sql, params = conn.calls[0]
+        self.assertEqual(params["phase"], "pr_open")
+        self.assertEqual(params["pr_number"], 240)
+        # PR-open bookkeeping must not consume a review fix round.
+        self.assertFalse(params["increment_fix_rounds"])
+        self.assertEqual(
+            json.loads(params["metadata"]), {"pr_open": {"pr_number": 240}},
+        )
+
+    def test_mark_pr_open_internal_metadata_wins_collision(self):
+        conn = FakeConn([_row(phase="pr_open", pr_number=240)])
+        client = AgentRunsClient(conn, self.identity)
+
+        client.mark_pr_open(
+            "o/r",
+            12,
+            pr_number=240,
+            metadata={"pr_open": {"pr_number": 999}, "source": "test"},
+        )
+
+        _sql, params = conn.calls[0]
+        self.assertEqual(
+            json.loads(params["metadata"]),
+            {"source": "test", "pr_open": {"pr_number": 240}},
+        )
+
     def test_list_active_and_stale_runs_use_domain_phases(self):
         active_conn = FakeConn([_row(phase="pm_started")])
         active_client = AgentRunsClient(active_conn, self.identity)

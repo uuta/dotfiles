@@ -362,6 +362,32 @@ class AgentRunsClient:
             "metadata": json.dumps(dict(metadata or {})),
         })
 
+    def mark_pr_open(
+        self,
+        repository_full_name: str,
+        github_issue_number: int,
+        *,
+        pr_number: int,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> AgentRun:
+        """Durably record that a PR was opened for this run.
+
+        Sets ``phase = 'pr_open'`` and ``pr_number`` so the PR watcher's
+        ``list_pr_watch_runs`` query (phase in pr_open/pr_watching/ready_to_merge
+        AND pr_number IS NOT NULL) picks the run up. This is the persisted
+        hand-off from PM/automation to the PR watcher; it must not rely on PM
+        prompt memory alone.
+        """
+        observation: dict[str, Any] = dict(metadata or {})
+        observation["pr_open"] = {"pr_number": pr_number}
+        return self.update_pr_fields(
+            repository_full_name,
+            github_issue_number,
+            pr_number=pr_number,
+            phase="pr_open",
+            metadata=observation,
+        )
+
     def record_observation(
         self,
         repository_full_name: str,

@@ -9,6 +9,19 @@
     /Users/your-name/dotfiles                              (the dotfiles checkout)
     /Users/your-name/Library/Logs/u-agents-launcher.log  (log destination)
 
+  Also edit the U_AGENTS_* values under EnvironmentVariables:
+    U_AGENTS_DATABASE_URL  PostgreSQL URL (the value below is the local
+                           compose.yml dev default; change for any other DB)
+    U_AGENTS_RUNNER_ID     stable runner identity (the placeholder "runner"
+                           is REJECTED on purpose so a forgotten edit fails
+                           loudly instead of running with a bad identity)
+    U_AGENTS_MACHINE_ID    stable machine identity (placeholder "machine" is
+                           likewise rejected until you replace it)
+
+  The interpreter at ProgramArguments[0] must have psycopg installed for the
+  live DB path. Verify with:
+    /opt/homebrew/bin/python3 -c 'import psycopg'
+
   Install:
     cp examples/launchd/local.u-agents.launcher.plist ~/Library/LaunchAgents/
     launchctl load   ~/Library/LaunchAgents/local.u-agents.launcher.plist
@@ -42,6 +55,12 @@
     <dict>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>U_AGENTS_DATABASE_URL</key>
+        <string>postgresql://u_agents:u_agents_dev_password@127.0.0.1:54329/u_agents</string>
+        <key>U_AGENTS_RUNNER_ID</key>
+        <string>runner</string>
+        <key>U_AGENTS_MACHINE_ID</key>
+        <string>machine</string>
     </dict>
 
     <key>StandardOutPath</key>

@@ -10,6 +10,15 @@ import re
 import unittest
 from pathlib import Path
 
+from u_agents.control_plane import (
+    ENV_DATABASE_URL,
+    ENV_MACHINE_ID,
+    ENV_RUNNER_ID,
+    ConfigError,
+    database_url_from_env,
+    load_runner_identity,
+)
+
 
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples" / "launchd"
 LAUNCHER_PLIST = EXAMPLES / "local.u-agents.launcher.plist"
@@ -114,6 +123,46 @@ class TestWatchdogPlist(unittest.TestCase):
     def test_log_paths_set(self):
         self.assertIn("StandardOutPath", self.plist)
         self.assertIn("StandardErrorPath", self.plist)
+
+
+class TestRequiredRunnerEnv(unittest.TestCase):
+    """Live launcher/watchdog runs need U_AGENTS_* env. The tracked templates
+    must declare those keys so launchd jobs do not silently fail
+    AgentRunsClient.from_env, while keeping identities as loud placeholders.
+    """
+
+    def _env(self, path: Path) -> dict:
+        return _load(path)["EnvironmentVariables"]
+
+    def test_plists_declare_all_required_runner_env_keys(self):
+        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST):
+            with self.subTest(path=path.name):
+                env = self._env(path)
+                for key in (ENV_DATABASE_URL, ENV_RUNNER_ID, ENV_MACHINE_ID):
+                    self.assertIn(key, env, f"{path.name} missing {key}")
+
+    def test_database_url_placeholder_has_valid_scheme(self):
+        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST):
+            with self.subTest(path=path.name):
+                env = self._env(path)
+                # database_url_from_env enforces postgresql:// / postgres://.
+                self.assertEqual(
+                    database_url_from_env({ENV_DATABASE_URL: env[ENV_DATABASE_URL]}),
+                    env[ENV_DATABASE_URL],
+                )
+
+    def test_identity_placeholders_fail_loudly_until_edited(self):
+        # The shipped runner/machine placeholders must be rejected by identity
+        # validation so a forgotten edit aborts with a clear error instead of
+        # claiming work under a bogus identity.
+        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST):
+            with self.subTest(path=path.name):
+                env = self._env(path)
+                with self.assertRaises(ConfigError):
+                    load_runner_identity({
+                        ENV_RUNNER_ID: env[ENV_RUNNER_ID],
+                        ENV_MACHINE_ID: env[ENV_MACHINE_ID],
+                    })
 
 
 class TestNoPersonalPaths(unittest.TestCase):

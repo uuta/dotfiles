@@ -59,6 +59,12 @@ watchdog recovery path apply. Do not open a PR from pane output alone.
    - If a git worktree already exists at {worktree}, reuse it.
    - Else create it from {main_checkout}: `git -C {main_checkout} worktree add -b {branch} {worktree}` (fall back to checking out an existing remote branch with the same name if present).
    - cd into {worktree} for all subsequent work.
+   - mise trust (only if this repo uses mise): if any of `mise.toml`,
+     `.mise.toml`, or `.config/mise/config.toml` exists in {worktree}, run
+     `mise trust {worktree}` (and `mise install` if tools are declared) before
+     running project commands. An untrusted mise config makes `mise run`/`mise
+     exec` and shell auto-activation fail until trusted. Skip this entirely for
+     repos with no mise config — do not assume every repo uses mise.
 
 2. clarify
    - Read the GitHub issue with `gh issue view {issue_number} --repo {repo_full}`.
@@ -103,6 +109,28 @@ watchdog recovery path apply. Do not open a PR from pane output alone.
    - PR body should reference the issue (`Closes #{issue_number}`) and
      summarize what shipped, how it was verified, and any follow-ups.
    - Do not force push. Do not merge.
+   - Durably record the PR so the PR watcher can take over. This is NOT
+     optional and must not rely on memory: capture the new PR number (from the
+     `gh pr create` URL, or `gh pr view --json number -q .number`) and run
+
+         PYTHONPATH={u_agents_root} {u_agents_python} -m u_agents.mark_pr_open --repo {repo_full} --issue {issue_number} --pr <pr-number>
+
+     Run this command exactly as written — do not substitute a bare `python3`
+     or drop the `PYTHONPATH` prefix. You are inside the target repo worktree
+     ({worktree}), which does not contain the `u_agents` package, and mise/PATH
+     there may select a Python without `psycopg`. `{u_agents_root}` puts the
+     package on the path and `{u_agents_python}` is the exact interpreter the
+     runner already uses (it has `psycopg`); a bare `python3` would fail with
+     `No module named u_agents` or `psycopg` not installed.
+     If this command fails, do not continue as though the PR was recorded:
+     confirm `U_AGENTS_DATABASE_URL`, `U_AGENTS_RUNNER_ID`, and
+     `U_AGENTS_MACHINE_ID` are set in this pane, then retry. If it still
+     fails, comment on the issue with the blocker and stop; the run remains
+     in `pm_started` and the PR watcher will not pick it up until this
+     command succeeds.
+     This advances the `agent_runs` row to `phase=pr_open` with `pr_number`
+     set. The PR watcher only picks up rows in `pr_open`/`pr_watching`/
+     `ready_to_merge` that have a `pr_number`, so skipping this strands the run.
 
 7. report
    - Post a completion summary as a comment on the issue using this format:

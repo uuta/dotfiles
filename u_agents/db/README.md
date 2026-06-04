@@ -118,21 +118,57 @@ cancelled
 
 ## PR watcher rules
 
-Automated PR review comment fixes are allowed at most once.
+Automated PR review comment fixes are allowed at most once, and only after a
+comment has been validated.
 
 1. If the PR is merged, set `phase = 'done'`.
-2. If there are must-fix PR comments and `pr_review_fix_rounds = 0`, set
-   `phase = 'fixing'`, increment `pr_review_fix_rounds`, and assign the
-   engineer the current must-fix list.
-3. If there are must-fix PR comments and `pr_review_fix_rounds >= 1`, set
-   `phase = 'blocked'` with a `block_reason`.
-4. If CI is green and there are no must-fix review comments, set
+2. If there is a fresh validated must-fix comment and `pr_review_fix_rounds = 0`,
+   set `phase = 'fixing'`, increment `pr_review_fix_rounds`, mark that comment
+   attempted, and assign the engineer the must-fix list.
+3. If a validated must-fix comment was already attempted once but is still
+   present, set `phase = 'blocked'` (it cannot be auto-fixed again and must not
+   be ignored).
+4. If any collected comment is classified `needs_user_judgment`:
+   - in the production `pr_watcher` CLI path, fresh keys are handed to the
+     existing PM pane for validation, marked `handed_off`, and parked in
+     `phase = 'fixing'` until the PM re-arms the watcher with `mark_pr_open`;
+   - with no live dispatcher, or if the same ambiguous key is already
+     `handed_off`, set `phase = 'blocked'` so a human decides (no repeat
+     auto-handoff).
+5. If there is a fresh validated must-fix comment and
+   `pr_review_fix_rounds >= 1`, set `phase = 'blocked'` (global round cap).
+6. If CI is green and there are no actionable/unresolved/judgment comments, set
    `phase = 'ready_to_merge'`.
-5. Otherwise remain in `phase = 'pr_watching'`.
+7. Otherwise remain in `phase = 'pr_watching'`.
 
-Review comment classification must distinguish must-fix items from optional,
-rejected, stale, or already-addressed comments before applying these rules.
+The watcher collects both top-level PR comments / review summaries and inline
+review comments (`/repos/{owner}/{repo}/pulls/{n}/comments`). If the inline
+fetch fails or returns malformed output, the pass is deferred (transient), not
+treated as "no comments". Comments are not always correct, so **every**
+candidate — inline comments, top-level comments with a must-fix or
+forward-action signal, `CHANGES_REQUESTED` review summaries, and a bare
+`reviewDecision = CHANGES_REQUESTED` — passes through the validation gate before
+it can become a must-fix input; none auto-trigger a fix. Verdicts are
+`valid_must_fix`,
+`valid_optional`, `invalid`, and `needs_user_judgment`. Marker text, a
+`CHANGES_REQUESTED` summary, high-priority styling, or bot authorship alone
+never make a comment `valid_must_fix`.
+
+### Per-comment at-most-once bookkeeping
+
+`metadata.pr_review_comments` maps a stable comment identity (GitHub review
+comment id + a body hash) to `{verdict, attempted, handed_off, ...}`, merged
+forward across passes so prior `attempted` / `handed_off` state is never lost
+when a fetch returns fewer/no comments. A `valid_must_fix` comment triggers one
+automated fix attempt and is then marked `attempted`; the same id+hash on later
+passes is not auto-fixed again (and if still present it escalates to `blocked`
+rather than being ignored). A `needs_user_judgment` comment is handed off to the
+PM pane at most once via `handed_off`; after the PM re-arms the watcher with
+`mark_pr_open`, the same still-ambiguous key blocks instead of being re-sent. A
+changed body yields a new key, so an edited comment is treated as a fresh
+validation candidate. This per-comment cap is enforced in addition to the global
+`pr_review_fix_rounds` one-round cap.
 
 The PR watcher never merges a PR. `ready_to_merge` is a notification state for
-the user/operator after GitHub PR existence, head branch, CI, and must-fix
+the user/operator after GitHub PR existence, head branch, CI, and validated
 comment state have been verified.
