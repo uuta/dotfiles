@@ -334,6 +334,12 @@ export CPPFLAGS="-I/usr/local/opt/zlib/include"
 # ChatGPT
 source "$HOME/.openai_key.zsh"
 
+# u-agents runner env (U_AGENTS_DATABASE_URL / RUNNER_ID / MACHINE_ID).
+# Copy .u_agents_env.zsh.template to ~/.u_agents_env.zsh and fill it in so the
+# tmux PM pane and launcher/watchdog share the same runtime identity. Guarded
+# so shells without the local file are unaffected. See docs/u-agents.md.
+[[ -f "$HOME/.u_agents_env.zsh" ]] && source "$HOME/.u_agents_env.zsh"
+
 # Embulk
 export PATH="$HOME/.embulk/bin:$PATH"
 

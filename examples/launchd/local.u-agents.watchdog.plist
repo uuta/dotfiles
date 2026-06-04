@@ -14,6 +14,13 @@
     /Users/your-name/dotfiles                              (the dotfiles checkout)
     /Users/your-name/Library/Logs/u-agents-watchdog.log  (log destination)
 
+  Also edit the U_AGENTS_* values under EnvironmentVariables (same as the
+  launcher job): U_AGENTS_DATABASE_URL plus the U_AGENTS_RUNNER_ID /
+  U_AGENTS_MACHINE_ID identities. The "runner"/"machine" placeholders are
+  rejected on purpose so a forgotten edit fails loudly. The interpreter at
+  ProgramArguments[0] must have psycopg installed:
+    /opt/homebrew/bin/python3 -c 'import psycopg'
+
   Install:
     cp examples/launchd/local.u-agents.watchdog.plist ~/Library/LaunchAgents/
     launchctl load   ~/Library/LaunchAgents/local.u-agents.watchdog.plist
@@ -51,6 +58,12 @@
     <dict>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>U_AGENTS_DATABASE_URL</key>
+        <string>postgresql://u_agents:u_agents_dev_password@127.0.0.1:54329/u_agents</string>
+        <key>U_AGENTS_RUNNER_ID</key>
+        <string>runner</string>
+        <key>U_AGENTS_MACHINE_ID</key>
+        <string>machine</string>
     </dict>
 
     <key>StandardOutPath</key>
