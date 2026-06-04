@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<!--
+  HOUSE TEMPLATE for Wiki visual knowledge cards.
+  Copy this file, then REPLACE every {{PLACEHOLDER}} and adapt the section
+  bodies for the term. KEEP the <style> block as-is (it is the house style) —
+  you may only re-theme by changing --accent / --accent-2 to fit the term's mood.
+
+  Section components below are EXAMPLES. Add, remove, or reorder sections to fit
+  the content, but preserve: numbered .sec-head, .card containers, bilingual
+  EN/JP text, and at least one inline <svg> diagram. Do NOT use external assets,
+  scripts, or web fonts — everything must be self-contained.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{TERM}} — Visual Vocabulary Guide</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --panel-2: #1c232d;
+    --ink: #e7e9ee;
+    --muted: #9aa3b2;
+    --line: #2b313c;
+    --accent: #2dd4bf;      /* primary accent — re-theme per term */
+    --accent-2: #38bdf8;    /* secondary accent */
+    --amber: #fbbf24;
+    --danger: #ef4444;
+    --warn: #f59e0b;
+    --ok: #22c55e;
+    --violet: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(900px 500px at 82% -10%, #0b3b3855, transparent),
+      radial-gradient(700px 500px at -10% 18%, #122a3a55, transparent),
+      var(--bg);
+    color: var(--ink);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  /* ---------- HERO ---------- */
+  .hero {
+    position: relative;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #0c2a2a, #11151d 62%);
+    padding: 40px 36px;
+  }
+  .hero-grid { display: grid; grid-template-columns: 1fr 280px; gap: 24px; align-items: center; }
+  .eyebrow { color: var(--accent); letter-spacing: .25em; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+  h1 { font-size: 60px; margin: 6px 0 4px; letter-spacing: -.02em; }
+  h1 .ad { color: var(--muted); font-size: 20px; font-weight: 500; }
+  .tagline { color: var(--muted); max-width: 48ch; }
+  .pron { font-family: ui-monospace, Menlo, monospace; color: var(--amber); font-size: 17px; }
+
+  @media (max-width: 760px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    h1 { font-size: 46px; }
+  }
+
+  /* ---------- SECTIONS ---------- */
+  section { margin-top: 40px; }
+  .sec-head { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .sec-head .num {
+    width: 34px; height: 34px; flex: 0 0 34px;
+    display: grid; place-items: center;
+    border-radius: 10px; background: var(--panel-2); border: 1px solid var(--line);
+    color: var(--accent); font-weight: 800; font-size: 15px;
+  }
+  .sec-head h2 { margin: 0; font-size: 23px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 22px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .label { font-weight: 700; margin-bottom: 6px; }
+  .tag {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); margin-bottom: 8px;
+  }
+  .ja { color: var(--muted); }
+  .quote {
+    border-left: 3px solid var(--accent);
+    padding: 4px 0 4px 14px;
+    margin: 10px 0;
+  }
+  .quote .en { font-weight: 600; }
+  .quote .jp { color: var(--muted); font-size: 14px; }
+  .hl { color: var(--amber); font-weight: 700; }
+
+  /* ---------- SPECTRUM / COMPARISON (optional) ---------- */
+  .modal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 760px) { .modal { grid-template-columns: 1fr; } }
+  .mbox { border: 1px solid var(--line); border-radius: 14px; padding: 16px; background: var(--panel); }
+  .mbox h4 { margin: 0 0 4px; font-size: 16px; }
+  .mbox .sub { color: var(--muted); font-size: 13px; }
+  .mbox .ex { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: var(--ink); }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:999px; margin-right:7px; vertical-align: middle; }
+
+  /* ---------- DIAGRAMS ---------- */
+  .flowcard { padding: 8px; }
+  svg { display: block; width: 100%; height: auto; }
+
+  /* ---------- USE CASES ---------- */
+  .cases { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  @media (max-width: 760px) { .cases { grid-template-columns: 1fr; } }
+  .case {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 16px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .case .ico { flex: 0 0 40px; font-size: 26px; }
+  .case .en { font-weight: 600; }
+  .case .jp { color: var(--muted); font-size: 13px; }
+  .case .field { color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+
+  /* ---------- RELATED TERMS ---------- */
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 8px 14px; font-size: 14px;
+  }
+  .chip b { color: var(--accent); }
+  .chip small { color: var(--muted); margin-left: 6px; }
+
+  footer { margin-top: 50px; color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HERO — term, part of speech, pronunciation, one-line bilingual tagline + a term-specific SVG illustration -->
+  <header class="hero">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">{{CATEGORY / FIELD · REGISTER}}</div>
+        <h1>{{term}} <span class="ad">/ {{part of speech}}</span></h1>
+        <div class="pron">{{/IPA/}} &nbsp;·&nbsp; {{カタカナ}}</div>
+        <p class="tagline">{{One-line definition in EN. 日本語の一行定義。}}</p>
+      </div>
+      <!-- Replace with a small, original SVG that visually evokes the term -->
+      <svg viewBox="0 0 240 240" role="img" aria-label="{{alt text}}">
+        <rect x="0" y="0" width="240" height="240" rx="18" fill="#11131a"/>
+        <!-- ...term-specific shapes... -->
+      </svg>
+    </div>
+  </header>
+
+  <!-- SECTION 1 — ETYMOLOGY / ORIGIN (flow diagram). Drop if not applicable. -->
+  <section>
+    <div class="sec-head"><div class="num">1</div><h2>{{Where it comes from}}</h2></div>
+    <div class="card flowcard">
+      <p class="ja" style="margin:4px 8px 14px">{{Etymology / origin explanation, bilingual.}}</p>
+      <svg viewBox="0 0 920 250" role="img" aria-label="{{etymology flow}}">
+        <defs>
+          <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="#2dd4bf"/>
+          </marker>
+        </defs>
+        <!-- nodes + edges: root → pivot meaning → modern senses -->
+      </svg>
+    </div>
+  </section>
+
+  <!-- SECTION 2 — THE FACES / SENSES (2-col card grid). One card per distinct meaning. -->
+  <section>
+    <div class="sec-head"><div class="num">2</div><h2>{{The faces of "term"}}</h2></div>
+    <div class="grid-2">
+      <div class="card">
+        <span class="tag">{{sense label}}</span>
+        <div class="label">{{Short title}} {{emoji}}</div>
+        <p class="ja">{{Explanation of this sense.}}</p>
+        <div class="quote"><div class="en">"{{example with <span class='hl'>term</span>}}"</div><div class="jp">{{和訳}}</div></div>
+      </div>
+      <!-- ...more sense cards... -->
+    </div>
+  </section>
+
+  <!-- SECTION 3 — SPECTRUM / COMPARISON / MERMAID-EQUIVALENT (optional).
+       Use .modal boxes for a 3-way contrast, or an intensity meter, or another SVG. -->
+  <section>
+    <div class="sec-head"><div class="num">3</div><h2>{{Contrast / spectrum}}</h2></div>
+    <div class="modal">
+      <div class="mbox"><h4><span class="dot" style="background:#22c55e"></span>{{A}}</h4><div class="sub">{{sub}}</div><div class="ex">{{example}}</div></div>
+      <div class="mbox"><h4><span class="dot" style="background:#2dd4bf"></span>{{B}}</h4><div class="sub">{{sub}}</div><div class="ex">{{example}}</div></div>
+      <div class="mbox"><h4><span class="dot" style="background:#ef4444"></span>{{C}}</h4><div class="sub">{{sub}}</div><div class="ex">{{example}}</div></div>
+    </div>
+  </section>
+
+  <!-- SECTION 4 — USE CASES (2-col). Each: icon + field tag + EN line + JP gloss. -->
+  <section>
+    <div class="sec-head"><div class="num">4</div><h2>{{Where it shows up}}</h2></div>
+    <div class="cases">
+      <div class="case"><div class="ico">{{emoji}}</div><div><div class="field">{{field}}</div><div class="en">{{usage}}</div><div class="jp">{{和訳}}</div></div></div>
+      <!-- ...~6 cases... -->
+    </div>
+  </section>
+
+  <!-- SECTION 5 — RELATED TERMS (~10 chips, bold term + small JP gloss). -->
+  <section>
+    <div class="sec-head"><div class="num">5</div><h2>{{Words in the same neighborhood}}</h2></div>
+    <div class="card">
+      <div class="chips">
+        <span class="chip"><b>{{related}}</b><small>{{和訳・ニュアンス}}</small></span>
+        <!-- ...~10 chips... -->
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Visual study sheet for <code>{{term}}.md</code> · Wiki vocabulary note
+  </footer>
+
+</div>
+</body>
+</html>
