@@ -180,19 +180,20 @@ alias cdf='cd ~/trander-flutter'
 alias cdfm='cd ~/trander-flutter/master'
 alias cdfw='cd ~/trander-flutter/.worktrees'
 alias cdr='cd ~/trander-rust'
+alias cdrm='cd ~/trander-rust/main'
+alias cdrw='cd ~/trander-rust/.worktrees'
 
-## WezTerm
-alias cdw='cd ~/dotfiles/.config/WezTerm'
+## trander-web
+alias cdw='cd ~/trander-web'
+alias cdwm='cd ~/trander-web/main'
+alias cdww='cd ~/trander-web/.worktrees'
 
 ## dotfiles
 alias cdd='cd ~/dotfiles'
-
-## mu
-alias cdv='cd ~/mu-muc-vscode'
-alias cdg='cd ~/mu-muc-app-service'
-alias cdg2='cd ~/mu-muc-app-service2'
-alias cdg3='cd ~/mu-muc-app-service3'
-alias cdgd='cd ~/mu-copilot-dev'
+## WezTerm
+alias cddw='cd ~/dotfiles/.config/WezTerm'
+## u_agents
+alias cddu='cd ~/dotfiles/u_agents'
 
 ## Surfingkeys-conf
 alias cdm='cd ~/surfingkeys-conf'
