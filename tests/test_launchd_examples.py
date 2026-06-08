@@ -23,6 +23,7 @@ from u_agents.control_plane import (
 EXAMPLES = Path(__file__).resolve().parent.parent / "examples" / "launchd"
 LAUNCHER_PLIST = EXAMPLES / "local.u-agents.launcher.plist"
 WATCHDOG_PLIST = EXAMPLES / "local.u-agents.watchdog.plist"
+PR_WATCHER_PLIST = EXAMPLES / "local.u-agents.pr-watcher.plist"
 EXPECTED_CONFIG_PATH = "/Users/your-name/dotfiles/u_agents/config/repositories.yml"
 
 # Patterns that must NEVER appear in a tracked example.
@@ -125,6 +126,34 @@ class TestWatchdogPlist(unittest.TestCase):
         self.assertIn("StandardErrorPath", self.plist)
 
 
+class TestPrWatcherPlist(unittest.TestCase):
+    def setUp(self):
+        self.assertTrue(PR_WATCHER_PLIST.exists(), f"missing {PR_WATCHER_PLIST}")
+        self.plist = _load(PR_WATCHER_PLIST)
+
+    def test_label_namespaced(self):
+        self.assertEqual(self.plist["Label"], "local.u-agents.pr-watcher")
+
+    def test_invokes_pr_watcher_module(self):
+        args = self.plist["ProgramArguments"]
+        self.assertIn("-m", args)
+        self.assertIn("u_agents.pr_watcher", args)
+
+    def test_uses_once_flag(self):
+        # Critical: launchd owns cadence; each tick should be a fresh process.
+        self.assertIn("--once", self.plist["ProgramArguments"])
+
+    def test_five_minute_interval(self):
+        self.assertEqual(self.plist["StartInterval"], 300)
+
+    def test_run_at_load_disabled(self):
+        self.assertFalse(self.plist.get("RunAtLoad", False))
+
+    def test_log_paths_set(self):
+        self.assertIn("StandardOutPath", self.plist)
+        self.assertIn("StandardErrorPath", self.plist)
+
+
 class TestRequiredRunnerEnv(unittest.TestCase):
     """Live launcher/watchdog runs need U_AGENTS_* env. The tracked templates
     must declare those keys so launchd jobs do not silently fail
@@ -135,14 +164,14 @@ class TestRequiredRunnerEnv(unittest.TestCase):
         return _load(path)["EnvironmentVariables"]
 
     def test_plists_declare_all_required_runner_env_keys(self):
-        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST):
+        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST, PR_WATCHER_PLIST):
             with self.subTest(path=path.name):
                 env = self._env(path)
                 for key in (ENV_DATABASE_URL, ENV_RUNNER_ID, ENV_MACHINE_ID):
                     self.assertIn(key, env, f"{path.name} missing {key}")
 
     def test_database_url_placeholder_has_valid_scheme(self):
-        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST):
+        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST, PR_WATCHER_PLIST):
             with self.subTest(path=path.name):
                 env = self._env(path)
                 # database_url_from_env enforces postgresql:// / postgres://.
@@ -155,7 +184,7 @@ class TestRequiredRunnerEnv(unittest.TestCase):
         # The shipped runner/machine placeholders must be rejected by identity
         # validation so a forgotten edit aborts with a clear error instead of
         # claiming work under a bogus identity.
-        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST):
+        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST, PR_WATCHER_PLIST):
             with self.subTest(path=path.name):
                 env = self._env(path)
                 with self.assertRaises(ConfigError):
@@ -187,8 +216,16 @@ class TestNoPersonalPaths(unittest.TestCase):
                 f"{WATCHDOG_PLIST.name} contains forbidden pattern {pat.pattern!r}",
             )
 
+    def test_pr_watcher_plist_has_no_personal_paths(self):
+        text = self._scan(PR_WATCHER_PLIST)
+        for pat in PERSONAL_PATTERNS:
+            self.assertIsNone(
+                pat.search(text),
+                f"{PR_WATCHER_PLIST.name} contains forbidden pattern {pat.pattern!r}",
+            )
+
     def test_examples_use_your_name_placeholder(self):
-        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST):
+        for path in (LAUNCHER_PLIST, WATCHDOG_PLIST, PR_WATCHER_PLIST):
             text = self._scan(path)
             self.assertIn("your-name", text,
                           f"{path.name} should use the 'your-name' placeholder")

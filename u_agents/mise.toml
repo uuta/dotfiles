@@ -1,32 +1,35 @@
 # Task aliases for the u-agents runner.
 #
 # Run these from the u_agents/ directory (e.g. `mise run launcher-dry-run`).
-# Python tasks set `dir = ".."` so `python3 -m u_agents.*` can import from the
-# dotfiles checkout root. DB tasks set `dir = "."` so Docker Compose reads
-# u_agents/compose.yml and its relative db/ init scripts.
+# Python tasks set `dir = ".."` so `python -m u_agents.*` can import from the
+# dotfiles checkout root. Runtime tasks source the same private env file used
+# by interactive PM panes and default to the launchd venv with psycopg.
+# Override the interpreter with U_AGENTS_PYTHON if needed.
+# DB tasks set `dir = "."` so Docker Compose reads u_agents/compose.yml and
+# its relative db/ init scripts.
 
 [tasks.launcher-dry-run]
-run = "python3 -m u_agents.launcher --dry-run"
+run = ". \"$HOME/.u_agents_env.zsh\" && \"${U_AGENTS_PYTHON:-$HOME/.local/share/u-agents/venv/bin/python}\" -m u_agents.launcher --dry-run"
 dir = ".."
 
 [tasks.launcher]
-run = "python3 -m u_agents.launcher"
+run = ". \"$HOME/.u_agents_env.zsh\" && \"${U_AGENTS_PYTHON:-$HOME/.local/share/u-agents/venv/bin/python}\" -m u_agents.launcher"
 dir = ".."
 
 [tasks.watchdog-dry-run]
-run = "python3 -m u_agents.watchdog --once --dry-run"
+run = ". \"$HOME/.u_agents_env.zsh\" && \"${U_AGENTS_PYTHON:-$HOME/.local/share/u-agents/venv/bin/python}\" -m u_agents.watchdog --once --dry-run"
 dir = ".."
 
 [tasks.watchdog]
-run = "python3 -m u_agents.watchdog --once"
+run = ". \"$HOME/.u_agents_env.zsh\" && \"${U_AGENTS_PYTHON:-$HOME/.local/share/u-agents/venv/bin/python}\" -m u_agents.watchdog --once"
 dir = ".."
 
 [tasks.pr-watcher]
-run = "python3 -m u_agents.pr_watcher --once"
+run = ". \"$HOME/.u_agents_env.zsh\" && \"${U_AGENTS_PYTHON:-$HOME/.local/share/u-agents/venv/bin/python}\" -m u_agents.pr_watcher --once"
 dir = ".."
 
 [tasks.test]
-run = "python3 -m unittest discover tests"
+run = "\"${U_AGENTS_PYTHON:-$HOME/.local/share/u-agents/venv/bin/python}\" -m unittest discover tests"
 dir = ".."
 
 [tasks.db-up]

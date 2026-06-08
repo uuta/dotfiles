@@ -15,6 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ENV_TEMPLATE = REPO_ROOT / ".u_agents_env.zsh.template"
 ZSHRC = REPO_ROOT / ".zshrc"
 DOCS = REPO_ROOT / "docs" / "u-agents.md"
+MISE = REPO_ROOT / "u_agents" / "mise.toml"
 
 # Same forbidden personal markers guarded for the launchd examples.
 PERSONAL_PATTERNS = [
@@ -78,6 +79,29 @@ class TestRuntimeEnvDocs(unittest.TestCase):
     def test_docs_instruct_private_file_mode(self):
         text = DOCS.read_text(encoding="utf-8")
         self.assertIn("chmod 600 ~/.u_agents_env.zsh", text)
+
+
+class TestMiseRuntimeTasks(unittest.TestCase):
+    def setUp(self):
+        self.text = MISE.read_text(encoding="utf-8")
+
+    def test_runtime_tasks_source_private_env_file(self):
+        for task in (
+            "launcher-dry-run",
+            "launcher",
+            "watchdog-dry-run",
+            "watchdog",
+            "pr-watcher",
+        ):
+            with self.subTest(task=task):
+                start = self.text.index(f"[tasks.{task}]")
+                end = self.text.find("\n[tasks.", start + 1)
+                section = self.text[start:] if end == -1 else self.text[start:end]
+                self.assertIn('. \\"$HOME/.u_agents_env.zsh\\"', section)
+
+    def test_python_tasks_use_runtime_interpreter_override(self):
+        self.assertIn("U_AGENTS_PYTHON", self.text)
+        self.assertIn(".local/share/u-agents/venv/bin/python", self.text)
 
 
 if __name__ == "__main__":

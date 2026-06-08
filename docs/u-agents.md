@@ -497,13 +497,14 @@ Suggested cron entry (single check per minute):
 
 ## Scheduling under launchd (macOS)
 
-On macOS, prefer `launchd` over `cron`. Two example plists are tracked in
+On macOS, prefer `launchd` over `cron`. Three example plists are tracked in
 `examples/launchd/`:
 
 | File | Job | Interval | Notes |
 | ---- | --- | -------- | ----- |
 | `local.u-agents.launcher.plist` | `u_agents.launcher` | 300 s (5 min) | One pass: resume sweep + claim one ready issue. |
 | `local.u-agents.watchdog.plist` | `u_agents.watchdog --once` | 60 s (1 min) | One check pass; launchd owns the cadence. |
+| `local.u-agents.pr-watcher.plist` | `u_agents.pr_watcher --once` | 300 s (5 min) | One PR-state pass; routes newly added PR comments to the PM pane. |
 
 ### Before installing
 
@@ -517,6 +518,8 @@ On macOS, prefer `launchd` over `cron`. Two example plists are tracked in
 
    /opt/homebrew/bin/python3 -m u_agents.watchdog \
      --config /Users/your-name/dotfiles/u_agents/config/repositories.yml --once --dry-run
+
+   /opt/homebrew/bin/python3 -m u_agents.pr_watcher --once
    ```
 
 2. Edit the four placeholder paths in each plist:
@@ -551,31 +554,38 @@ On macOS, prefer `launchd` over `cron`. Two example plists are tracked in
 # Install (copies to ~/Library/LaunchAgents and registers)
 cp examples/launchd/local.u-agents.launcher.plist ~/Library/LaunchAgents/
 cp examples/launchd/local.u-agents.watchdog.plist ~/Library/LaunchAgents/
+cp examples/launchd/local.u-agents.pr-watcher.plist ~/Library/LaunchAgents/
 launchctl load   ~/Library/LaunchAgents/local.u-agents.launcher.plist
 launchctl load   ~/Library/LaunchAgents/local.u-agents.watchdog.plist
+launchctl load   ~/Library/LaunchAgents/local.u-agents.pr-watcher.plist
 
 # Trigger one run immediately (otherwise wait for the next interval tick)
 launchctl start  local.u-agents.launcher
 launchctl start  local.u-agents.watchdog
+launchctl start  local.u-agents.pr-watcher
 
 # Stop the most recent in-flight run (does NOT unload the schedule)
 launchctl stop   local.u-agents.watchdog
+launchctl stop   local.u-agents.pr-watcher
 
 # Inspect schedule and exit codes
 launchctl list | grep u-agents
 
 # Tail the logs
 tail -F ~/Library/Logs/u-agents-launcher.log \
-        ~/Library/Logs/u-agents-watchdog.log
+        ~/Library/Logs/u-agents-watchdog.log \
+        ~/Library/Logs/u-agents-pr-watcher.log
 
 # Uninstall (unregister and remove)
 launchctl unload ~/Library/LaunchAgents/local.u-agents.launcher.plist
 launchctl unload ~/Library/LaunchAgents/local.u-agents.watchdog.plist
+launchctl unload ~/Library/LaunchAgents/local.u-agents.pr-watcher.plist
 rm ~/Library/LaunchAgents/local.u-agents.launcher.plist
 rm ~/Library/LaunchAgents/local.u-agents.watchdog.plist
+rm ~/Library/LaunchAgents/local.u-agents.pr-watcher.plist
 ```
 
-### Why watchdog uses `--once`
+### Why watchdog and PR watcher use `--once`
 
 The watchdog also has a long-loop form (`--interval 60` without `--once`),
 but under launchd you want `--once` so:
@@ -587,7 +597,11 @@ but under launchd you want `--once` so:
 - Combining a python sleep loop with launchd duplicates the scheduler.
 
 For the same reason, the launcher plist uses launchd's `StartInterval`
-rather than a sleep loop in python.
+rather than a sleep loop in python. The PR watcher follows the same one-pass
+pattern: each run observes current GitHub PR reality, hands any fresh review
+comment keys to the owning PM pane, and exits. Per-comment `handed_off` /
+`attempted` bookkeeping prevents the same stable comment from being routed or
+fixed repeatedly.
 
 ### Suggested intervals
 
@@ -595,6 +609,7 @@ rather than a sleep loop in python.
 | --- | -------- | --------- |
 | launcher | 300 s | New ready issues are rare; resume sweep is cheap but not free (one `gh issue list` per enabled repo). |
 | watchdog | 60 s | Combined with default `--stall-checks=3`, a pane must be unchanged for ~3 minutes before a ping and another ~3 minutes after a ping before a stall comment. Decrease for tighter detection, increase to save API quota. |
+| pr-watcher | 300 s | PR comments and CI can arrive after the PR is opened. A 5-minute cadence is enough to route each new stable comment for validation while keeping GitHub/DB polling modest. |
 
 ## Workflow
 
