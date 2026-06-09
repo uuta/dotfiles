@@ -362,6 +362,28 @@ class AgentRunsClient:
             "metadata": json.dumps(dict(metadata or {})),
         })
 
+    def merge_metadata(
+        self,
+        repository_full_name: str,
+        github_issue_number: int,
+        metadata: Mapping[str, Any],
+    ) -> AgentRun:
+        validate_repository_full_name(repository_full_name)
+        validate_issue_number(github_issue_number)
+        validate_metadata(metadata)
+        sql = f"""
+            UPDATE agent_runs
+            SET metadata = metadata || %(metadata)s::jsonb
+            WHERE repository_full_name = %(repository_full_name)s
+              AND github_issue_number = %(github_issue_number)s
+            RETURNING {_row_columns()}
+        """
+        return self._require_row(sql, {
+            "repository_full_name": repository_full_name,
+            "github_issue_number": github_issue_number,
+            "metadata": json.dumps(dict(metadata)),
+        })
+
     def mark_pr_open(
         self,
         repository_full_name: str,

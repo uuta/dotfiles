@@ -21,3 +21,10 @@ export U_AGENTS_DATABASE_URL="postgresql://u_agents:u_agents_dev_password@127.0.
 # fails loudly instead of claiming work under a bogus identity.
 export U_AGENTS_RUNNER_ID="runner"
 export U_AGENTS_MACHINE_ID="machine"
+
+# Optional Slack incoming-webhook URL. When set, `mark_pr_open` sends one Slack
+# message after it durably records a PR-open transition (once per run/PR). Leave
+# it unset to disable Slack notifications entirely — DB persistence and the PR
+# watcher hand-off are unaffected. This is a secret: keep the real value only in
+# ~/.u_agents_env.zsh, never commit it. Uncomment and fill in to enable:
+# export U_AGENTS_SLACK_WEBHOOK_URL="https://hooks.slack.com/services/XXX/YYY/ZZZ"
