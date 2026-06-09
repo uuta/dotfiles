@@ -227,6 +227,25 @@ class TestAgentRunsClientWrites(unittest.TestCase):
         self.assertEqual(params["phase"], "fixing")
         self.assertTrue(params["increment_fix_rounds"])
 
+    def test_merge_metadata_only_updates_metadata(self):
+        conn = FakeConn([_row(metadata={"slack_pr_open_notified": {"pr_number": 240}})])
+        client = AgentRunsClient(conn, self.identity)
+
+        run = client.merge_metadata(
+            "o/r",
+            12,
+            {"slack_pr_open_notified": {"pr_number": 240}},
+        )
+
+        self.assertEqual(run.metadata, {"slack_pr_open_notified": {"pr_number": 240}})
+        sql, params = conn.calls[0]
+        self.assertIn("SET metadata = metadata || %(metadata)s::jsonb", sql)
+        self.assertNotIn("block_reason =", sql)
+        self.assertEqual(
+            json.loads(params["metadata"]),
+            {"slack_pr_open_notified": {"pr_number": 240}},
+        )
+
     def test_mark_pr_open_sets_pr_open_phase_and_number(self):
         conn = FakeConn([_row(phase="pr_open", pr_number=240)])
         client = AgentRunsClient(conn, self.identity)

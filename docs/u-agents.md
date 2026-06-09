@@ -181,6 +181,12 @@ Required runner environment for DB-backed operation:
 | `U_AGENTS_RUNNER_ID` | Stable runner identity from config/env. |
 | `U_AGENTS_MACHINE_ID` | Stable machine identity from config/env. |
 
+Optional runner environment:
+
+| Name | Meaning |
+| ---- | ------- |
+| `U_AGENTS_SLACK_WEBHOOK_URL` | Slack incoming-webhook URL. When set, `mark_pr_open` posts one Slack message per run/PR after the DB transition commits. Unset disables Slack entirely with no other behaviour change. It is a secret — keep the real value only in `~/.u_agents_env.zsh`, never in a tracked file. |
+
 Agents must not invent `U_AGENTS_RUNNER_ID` or `U_AGENTS_MACHINE_ID`.
 Blank values and placeholders such as `runner`, `machine`, `placeholder`,
 `changeme`, `todo`, or `example` are rejected. Launcher dry-runs require the
@@ -370,6 +376,39 @@ uses), so the next PR-watcher pass takes over. It needs the runner env and
 
 The PM prompt (`prompts/pm.md`) includes this as a required, non-optional step
 right after `gh pr create`.
+
+#### Slack notification (optional)
+
+When `U_AGENTS_SLACK_WEBHOOK_URL` is set, `mark_pr_open` sends one Slack message
+**after** the `phase=pr_open` / `pr_number` transition has committed — the DB row
+stays the source of truth and the PR-watcher hand-off, Slack is only a
+side-channel. The message looks like:
+
+```text
+u_agents opened PR
+<repo>#<issue> -> PR #<pr>
+https://github.com/<repo>/pull/<pr>
+branch: <branch>
+runner: <runner_id> / <machine_id>
+```
+
+Delivery is best-effort and never gates the durable flow:
+
+- **Unset webhook** — no Slack call; behaviour is identical to before.
+- **Delivery failure** — logs a `WARN` to stderr and the CLI still exits `0`
+  once the DB transition succeeded, so the PR watcher still takes over.
+- **At most once** — `mark_pr_open` is also re-run to re-arm the watcher after
+  review fixes. Before any webhook call, it persists a
+  `metadata.slack_pr_open_notified = {"pr_number": <pr>}` marker (merged into the
+  existing jsonb, so the durable contract is unchanged); later re-arms for the
+  same PR see the marker and are suppressed. Because the marker is stored
+  *before* delivery, a send that fails (or is ambiguous) after the marker is
+  written is **not** retried on a later re-arm — the at-most-once guarantee is
+  preferred over re-sending. If the marker itself cannot be persisted, the Slack
+  send is skipped entirely so no un-suppressable duplicate can occur.
+
+The webhook URL is a secret: keep it only in `~/.u_agents_env.zsh` (the PM
+pane's env), never in a tracked file.
 
 ### PR Watcher
 

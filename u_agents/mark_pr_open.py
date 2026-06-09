@@ -20,6 +20,7 @@ import argparse
 import sys
 
 from u_agents.agent_runs import AgentRun, AgentRunsClient
+from u_agents.slack_notify import notify_pr_open
 
 
 def record_pr_open(
@@ -55,6 +56,10 @@ def main(argv=None) -> int:
     db_client = AgentRunsClient.from_env()
     try:
         run = record_pr_open(db_client, args.repo, args.issue, args.pr)
+        # Best-effort Slack notification, only after the DB transition above has
+        # committed. No-op when U_AGENTS_SLACK_WEBHOOK_URL is unset; a delivery
+        # failure warns but never fails the CLI or the PR-watcher hand-off.
+        notify_pr_open(db_client, run)
     finally:
         db_client.close()
     print(

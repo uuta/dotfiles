@@ -12,6 +12,7 @@ Layout:
 - `watchdog.py` — stall detector (`python3 -m u_agents.watchdog`).
 - `pr_watcher.py` — DB-backed PR phase watcher (`python3 -m u_agents.pr_watcher`).
 - `mark_pr_open.py` — PM-run CLI to record an opened PR (`phase=pr_open`, `pr_number`).
+- `slack_notify.py` — optional, best-effort Slack PR-open webhook (`U_AGENTS_SLACK_WEBHOOK_URL`).
 - `prompts/pm.md` — PM prompt template sent into the tmux PM pane.
 - `compose.yml` — local PostgreSQL 17 for v0.2 control-plane development.
 - `db/` — `agent_runs` schema and contract docs.
