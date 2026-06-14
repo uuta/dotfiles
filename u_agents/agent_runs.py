@@ -16,6 +16,9 @@ from u_agents.contract import (
 )
 from u_agents.control_plane import (
     AGENT_RUN_STATUSES,
+    REVIEW_COMMENT_RESOLUTION_STATUSES,
+    REVIEW_COMMENT_SOURCES,
+    REVIEW_COMMENT_VERDICTS,
     RunnerIdentity,
     database_url_from_env,
     load_runner_identity,
@@ -86,6 +89,59 @@ class AgentRun:
             pr_review_fix_rounds=int(row.get("pr_review_fix_rounds") or 0),
             block_reason=row.get("block_reason"),
             metadata=row.get("metadata") or {},
+        )
+
+
+@dataclass(frozen=True)
+class ReviewCommentRecord:
+    """A durable PR review comment row from ``review_comments``.
+
+    The watcher owns ``watcher_verdict`` (what it observed); the PM owns
+    ``pm_decision`` and the ``resolution_status`` lifecycle plus the commit /
+    verification evidence. ``comment_key`` (``github_comment_id:body_hash``) is
+    the stable identity used across passes and by the PM CLI.
+    """
+
+    agent_run_id: str
+    github_comment_id: int
+    body_hash: str
+    comment_key: str
+    pr_number: int
+    source: str
+    watcher_verdict: str
+    resolution_status: str
+    pm_decision: str | None = None
+    handed_off_at: Any = None
+    resolved_at: Any = None
+    addressed_by_commit_sha: str | None = None
+    verification_summary: str | None = None
+    verification_refs: Any = None
+    original_body: str | None = None
+    original_path: str | None = None
+    original_line: int | None = None
+    original_commit_sha: str | None = None
+
+    @classmethod
+    def from_row(cls, row: Mapping[str, Any]) -> "ReviewCommentRecord":
+        return cls(
+            agent_run_id=str(row["agent_run_id"]),
+            github_comment_id=int(row["github_comment_id"]),
+            body_hash=str(row["body_hash"]),
+            comment_key=str(row["comment_key"]),
+            pr_number=int(row["pr_number"]),
+            source=str(row["source"]),
+            watcher_verdict=str(row["watcher_verdict"]),
+            resolution_status=str(row["resolution_status"]),
+            pm_decision=row.get("pm_decision"),
+            handed_off_at=row.get("handed_off_at"),
+            resolved_at=row.get("resolved_at"),
+            addressed_by_commit_sha=row.get("addressed_by_commit_sha"),
+            verification_summary=row.get("verification_summary"),
+            verification_refs=row.get("verification_refs"),
+            original_body=row.get("original_body"),
+            original_path=row.get("original_path"),
+            original_line=row.get("original_line"),
+            original_commit_sha=row.get("original_commit_sha"),
         )
 
 
@@ -164,6 +220,125 @@ def validate_metadata(metadata: Mapping[str, Any] | None) -> Mapping[str, Any]:
     return metadata
 
 
+# ---------------------------------------------------------------------------
+# review_comments validation (shared by AgentRunsClient and the PM CLI)
+# ---------------------------------------------------------------------------
+
+
+def validate_github_comment_id(value: int) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError("github_comment_id must be an integer")
+    return value
+
+
+def validate_body_hash(value: str) -> str:
+    if not isinstance(value, str) or value.strip() == "":
+        raise ValueError("body_hash must be a non-empty string")
+    if any(ch.isspace() for ch in value):
+        raise ValueError("body_hash must not contain whitespace")
+    return value
+
+
+def validate_comment_key(value: str) -> str:
+    if not isinstance(value, str) or value.strip() == "":
+        raise ValueError("comment_key must be a non-empty string")
+    # comment_key is the ``github_comment_id:body_hash`` generated column. The
+    # id part may be a signed 64-bit integer (synthetic review signals use
+    # deterministic signed ids), so only enforce the colon-delimited shape with
+    # non-empty parts rather than the exact id/hash formats.
+    head, sep, tail = value.partition(":")
+    if not sep or head.strip() == "" or tail.strip() == "":
+        raise ValueError(
+            "comment_key must be 'github_comment_id:body_hash' with non-empty parts"
+        )
+    return value
+
+
+def validate_review_comment_source(value: str) -> str:
+    if value not in REVIEW_COMMENT_SOURCES:
+        raise ValueError(
+            f"source must be one of: {', '.join(REVIEW_COMMENT_SOURCES)}"
+        )
+    return value
+
+
+def validate_watcher_verdict(value: str) -> str:
+    if value not in REVIEW_COMMENT_VERDICTS:
+        raise ValueError(
+            f"watcher_verdict must be one of: {', '.join(REVIEW_COMMENT_VERDICTS)}"
+        )
+    return value
+
+
+def validate_pm_decision(value: str | None) -> str | None:
+    if value is None:
+        return None
+    if value not in REVIEW_COMMENT_VERDICTS:
+        raise ValueError(
+            f"pm_decision must be one of: {', '.join(REVIEW_COMMENT_VERDICTS)}"
+        )
+    return value
+
+
+def validate_resolution_status(value: str) -> str:
+    if value not in REVIEW_COMMENT_RESOLUTION_STATUSES:
+        raise ValueError(
+            "resolution_status must be one of: "
+            + ", ".join(REVIEW_COMMENT_RESOLUTION_STATUSES)
+        )
+    return value
+
+
+def validate_verification_refs(refs: Any) -> list:
+    """Validate that verification_refs is a JSON array (list)."""
+    if refs is None:
+        return []
+    if not isinstance(refs, (list, tuple)):
+        raise ValueError("verification_refs must be a JSON array (list)")
+    try:
+        json.dumps(list(refs))
+    except TypeError as e:
+        raise ValueError(
+            "verification_refs elements must be JSON-serializable"
+        ) from e
+    return list(refs)
+
+
+def _is_blank(value: str | None) -> bool:
+    return value is None or str(value).strip() == ""
+
+
+def validate_review_comment_resolution(
+    resolution_status: str,
+    *,
+    addressed_by_commit_sha: str | None,
+    verification_summary: str | None,
+) -> None:
+    """Enforce the evidence each terminal resolution requires.
+
+    The DB also enforces ``addressed`` requires a commit + verification summary;
+    this gives the client and CLI an early, specific error and additionally
+    requires a reason (``verification_summary``) for ``rejected`` /
+    ``needs_user_judgment`` so a PM cannot silently close a comment.
+    """
+    validate_resolution_status(resolution_status)
+    if resolution_status == "addressed":
+        if _is_blank(addressed_by_commit_sha):
+            raise ValueError(
+                "resolution_status 'addressed' requires addressed_by_commit_sha"
+            )
+        if _is_blank(verification_summary):
+            raise ValueError(
+                "resolution_status 'addressed' requires verification_summary"
+            )
+    elif resolution_status in ("rejected", "needs_user_judgment"):
+        if _is_blank(verification_summary):
+            raise ValueError(
+                f"resolution_status '{resolution_status}' requires a reason in "
+                "verification_summary"
+            )
+
+
 def build_claim_payload(
     repo: RepoConfig,
     issue_number: int,
@@ -201,6 +376,35 @@ def _row_columns() -> str:
         "worktree_basename, tmux_window, pm_pane, pr_number, "
         "pr_review_fix_rounds, block_reason, metadata"
     )
+
+
+_REVIEW_COMMENT_COLUMNS = (
+    "agent_run_id",
+    "github_comment_id",
+    "body_hash",
+    "comment_key",
+    "pr_number",
+    "source",
+    "watcher_verdict",
+    "pm_decision",
+    "resolution_status",
+    "original_body",
+    "original_path",
+    "original_line",
+    "original_commit_sha",
+    "handed_off_at",
+    "resolved_at",
+    "addressed_by_commit_sha",
+    "verification_summary",
+    "verification_refs",
+    "first_seen_at",
+    "last_seen_at",
+)
+
+
+def _review_comment_columns(prefix: str = "") -> str:
+    dot = f"{prefix}." if prefix else ""
+    return ", ".join(f"{dot}{c}" for c in _REVIEW_COMMENT_COLUMNS)
 
 
 class AgentRunsClient:
@@ -570,6 +774,215 @@ class AgentRunsClient:
             ORDER BY updated_at ASC
         """
         return [AgentRun.from_row(r) for r in self._fetch_all(sql, {})]
+
+    # ----- review_comments -------------------------------------------------
+
+    def upsert_review_comment(
+        self,
+        repository_full_name: str,
+        github_issue_number: int,
+        *,
+        github_comment_id: int,
+        body_hash: str,
+        pr_number: int,
+        source: str,
+        watcher_verdict: str,
+        original_body: str | None = None,
+        original_path: str | None = None,
+        original_line: int | None = None,
+        original_commit_sha: str | None = None,
+    ) -> ReviewCommentRecord:
+        """Record a review comment the watcher saw this pass.
+
+        First detection inserts the row; later passes update only the
+        watcher-observed fields (``watcher_verdict``, ``source``, ``pr_number``,
+        the captured original_* fields) and ``last_seen_at``. The PM-owned
+        resolution lifecycle (``pm_decision``, ``resolution_status``,
+        ``handed_off_at``, ``resolved_at``, commit, verification) is preserved
+        across passes so an addressed/rejected comment is never silently reset
+        to ``unresolved`` by a later watcher observation.
+        """
+        validate_repository_full_name(repository_full_name)
+        validate_issue_number(github_issue_number)
+        validate_github_comment_id(github_comment_id)
+        validate_body_hash(body_hash)
+        if not isinstance(pr_number, int) or isinstance(pr_number, bool) or pr_number <= 0:
+            raise ValueError("pr_number must be a positive integer")
+        validate_review_comment_source(source)
+        validate_watcher_verdict(watcher_verdict)
+        sql = f"""
+            INSERT INTO review_comments (
+                agent_run_id, github_comment_id, body_hash, pr_number, source,
+                watcher_verdict, original_body, original_path, original_line,
+                original_commit_sha, last_seen_at
+            )
+            SELECT run_id, %(github_comment_id)s, %(body_hash)s, %(pr_number)s,
+                   %(source)s, %(watcher_verdict)s, %(original_body)s,
+                   %(original_path)s, %(original_line)s, %(original_commit_sha)s,
+                   now()
+            FROM agent_runs
+            WHERE repository_full_name = %(repository_full_name)s
+              AND github_issue_number = %(github_issue_number)s
+            ON CONFLICT ON CONSTRAINT review_comments_pkey DO UPDATE
+            SET pr_number = EXCLUDED.pr_number,
+                source = EXCLUDED.source,
+                watcher_verdict = EXCLUDED.watcher_verdict,
+                original_body = EXCLUDED.original_body,
+                original_path = EXCLUDED.original_path,
+                original_line = EXCLUDED.original_line,
+                original_commit_sha = COALESCE(
+                    EXCLUDED.original_commit_sha,
+                    review_comments.original_commit_sha
+                ),
+                last_seen_at = now()
+            RETURNING {_review_comment_columns()}
+        """
+        row = self._fetch_one(sql, {
+            "repository_full_name": repository_full_name,
+            "github_issue_number": github_issue_number,
+            "github_comment_id": github_comment_id,
+            "body_hash": body_hash,
+            "pr_number": pr_number,
+            "source": source,
+            "watcher_verdict": watcher_verdict,
+            "original_body": original_body,
+            "original_path": original_path,
+            "original_line": original_line,
+            "original_commit_sha": original_commit_sha,
+        })
+        if row is None:
+            raise RuntimeError(
+                "agent_runs row not found for review comment upsert: "
+                f"{repository_full_name}#{github_issue_number}"
+            )
+        return ReviewCommentRecord.from_row(row)
+
+    def mark_review_comment_handed_off(
+        self,
+        repository_full_name: str,
+        github_issue_number: int,
+        comment_key: str,
+    ) -> ReviewCommentRecord:
+        """Stamp ``handed_off_at`` the first time a comment is sent to the PM.
+
+        Idempotent: the original hand-off timestamp is preserved so a later call
+        does not look like a fresh hand-off.
+        """
+        validate_repository_full_name(repository_full_name)
+        validate_issue_number(github_issue_number)
+        validate_comment_key(comment_key)
+        sql = f"""
+            UPDATE review_comments AS rc
+            SET handed_off_at = COALESCE(rc.handed_off_at, now())
+            FROM agent_runs AS ar
+            WHERE rc.agent_run_id = ar.run_id
+              AND ar.repository_full_name = %(repository_full_name)s
+              AND ar.github_issue_number = %(github_issue_number)s
+              AND rc.comment_key = %(comment_key)s
+            RETURNING {_review_comment_columns("rc")}
+        """
+        row = self._fetch_one(sql, {
+            "repository_full_name": repository_full_name,
+            "github_issue_number": github_issue_number,
+            "comment_key": comment_key,
+        })
+        if row is None:
+            raise RuntimeError(
+                f"review_comments row {comment_key!r} not found for "
+                f"{repository_full_name}#{github_issue_number}"
+            )
+        return ReviewCommentRecord.from_row(row)
+
+    def record_review_comment_resolution(
+        self,
+        repository_full_name: str,
+        github_issue_number: int,
+        comment_key: str,
+        *,
+        resolution_status: str,
+        pm_decision: str | None = None,
+        addressed_by_commit_sha: str | None = None,
+        verification_summary: str | None = None,
+        verification_refs: Any = None,
+    ) -> ReviewCommentRecord:
+        """Persist the PM's decision for one review comment.
+
+        ``addressed`` requires a commit sha and a verification summary;
+        ``rejected`` / ``needs_user_judgment`` require a reason in
+        ``verification_summary``. ``resolved_at`` is set for any terminal status
+        and cleared for ``unresolved`` (the DB enforces the same invariants).
+        """
+        validate_repository_full_name(repository_full_name)
+        validate_issue_number(github_issue_number)
+        validate_comment_key(comment_key)
+        validate_pm_decision(pm_decision)
+        refs = validate_verification_refs(verification_refs)
+        validate_review_comment_resolution(
+            resolution_status,
+            addressed_by_commit_sha=addressed_by_commit_sha,
+            verification_summary=verification_summary,
+        )
+        sql = f"""
+            UPDATE review_comments AS rc
+            SET pm_decision = %(pm_decision)s,
+                resolution_status = %(resolution_status)s,
+                addressed_by_commit_sha = %(addressed_by_commit_sha)s,
+                verification_summary = %(verification_summary)s,
+                verification_refs = COALESCE(
+                    %(verification_refs)s::jsonb, rc.verification_refs
+                ),
+                resolved_at = CASE
+                    WHEN %(resolution_status)s = 'unresolved' THEN NULL
+                    ELSE now()
+                END
+            FROM agent_runs AS ar
+            WHERE rc.agent_run_id = ar.run_id
+              AND ar.repository_full_name = %(repository_full_name)s
+              AND ar.github_issue_number = %(github_issue_number)s
+              AND rc.comment_key = %(comment_key)s
+            RETURNING {_review_comment_columns("rc")}
+        """
+        row = self._fetch_one(sql, {
+            "repository_full_name": repository_full_name,
+            "github_issue_number": github_issue_number,
+            "comment_key": comment_key,
+            "pm_decision": pm_decision,
+            "resolution_status": resolution_status,
+            "addressed_by_commit_sha": addressed_by_commit_sha,
+            "verification_summary": verification_summary,
+            "verification_refs": (
+                json.dumps(refs) if verification_refs is not None else None
+            ),
+        })
+        if row is None:
+            raise RuntimeError(
+                f"review_comments row {comment_key!r} not found for "
+                f"{repository_full_name}#{github_issue_number}"
+            )
+        return ReviewCommentRecord.from_row(row)
+
+    def list_review_comments(
+        self,
+        repository_full_name: str,
+        github_issue_number: int,
+    ) -> list[ReviewCommentRecord]:
+        validate_repository_full_name(repository_full_name)
+        validate_issue_number(github_issue_number)
+        sql = f"""
+            SELECT {_review_comment_columns("rc")}
+            FROM review_comments AS rc
+            JOIN agent_runs AS ar ON ar.run_id = rc.agent_run_id
+            WHERE ar.repository_full_name = %(repository_full_name)s
+              AND ar.github_issue_number = %(github_issue_number)s
+            ORDER BY rc.first_seen_at ASC
+        """
+        return [
+            ReviewCommentRecord.from_row(r)
+            for r in self._fetch_all(sql, {
+                "repository_full_name": repository_full_name,
+                "github_issue_number": github_issue_number,
+            })
+        ]
 
     def _validate_claim_payload(self, payload: ClaimPayload) -> None:
         validate_repository_full_name(payload.repository_full_name)

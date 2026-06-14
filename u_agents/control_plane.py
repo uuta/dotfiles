@@ -40,6 +40,32 @@ RUN_PHASE_STATUSES = (
     "cancelled",
 )
 
+# review_comments contract (see u_agents/db/003_review_comments.sql). These are
+# the single Python-side source for the SQL CHECK enums so the DB, the runtime
+# client, the PR watcher, and the PM CLI cannot drift apart.
+REVIEW_COMMENT_SOURCES = (
+    "top_level",
+    "review_body",
+    "inline_review",
+    "unknown",
+)
+# Verdict the watcher records about a comment (what it observed). Also the set
+# of values the PM may record as `pm_decision`.
+REVIEW_COMMENT_VERDICTS = (
+    "valid_must_fix",
+    "valid_optional",
+    "invalid",
+    "needs_user_judgment",
+)
+# Durable resolution lifecycle the PM owns. `unresolved` is the initial state;
+# `addressed`/`rejected`/`needs_user_judgment` are terminal PM decisions.
+REVIEW_COMMENT_RESOLUTION_STATUSES = (
+    "unresolved",
+    "addressed",
+    "rejected",
+    "needs_user_judgment",
+)
+
 PR_REVIEW_FIX_MAX_ROUNDS = 1
 ENV_DATABASE_URL = "U_AGENTS_DATABASE_URL"
 ENV_RUNNER_ID = "U_AGENTS_RUNNER_ID"

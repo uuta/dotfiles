@@ -6,6 +6,7 @@ from dataclasses import replace
 from unittest import mock
 
 from u_agents.agent_runs import AgentRun
+from u_agents.agent_runs import ReviewCommentRecord
 from u_agents.pr_watcher import (
     PR_VIEW_JSON_FIELDS,
     REVIEW_VERDICTS,
@@ -15,6 +16,7 @@ from u_agents.pr_watcher import (
     build_fix_prompt,
     build_validation_handoff_prompt,
     check_once,
+    db_source,
     default_validate_comment,
     extract_must_fix_review_comment_keys,
     fetch_pr_reality,
@@ -22,7 +24,7 @@ from u_agents.pr_watcher import (
     live_dispatch_handoff,
     mark_pr_open_command,
     reconcile_pr_run,
-    triage_review_comments,
+    record_resolution_command,
 )
 
 
@@ -70,10 +72,42 @@ def _reality(**overrides):
     return replace(base, **overrides)
 
 
+def _seed(comment, *, watcher_verdict="needs_user_judgment", source="inline_review",
+          resolution_status="unresolved", pm_decision=None, handed_off_at=None,
+          resolved_at=None, addressed_by_commit_sha=None, verification_summary=None,
+          verification_refs=None, pr_number=45):
+    """Build a pre-existing review_comments row dict for FakeDbClient, keyed by
+    the comment's stable_key (== the DB comment_key)."""
+    return {
+        "comment_key": comment.stable_key,
+        "github_comment_id": comment.github_comment_id,
+        "body_hash": comment.body_hash[:12],
+        "pr_number": pr_number,
+        "source": source,
+        "watcher_verdict": watcher_verdict,
+        "resolution_status": resolution_status,
+        "pm_decision": pm_decision,
+        "handed_off_at": handed_off_at,
+        "resolved_at": resolved_at,
+        "addressed_by_commit_sha": addressed_by_commit_sha,
+        "verification_summary": verification_summary,
+        "verification_refs": list(verification_refs or []),
+        "original_body": comment.body,
+        "original_path": comment.path,
+        "original_line": comment.line,
+        "original_commit_sha": None,
+    }
+
+
 class FakeDbClient:
-    def __init__(self, runs=None):
+    def __init__(self, runs=None, comments=None):
         self.runs = list(runs or [])
         self.calls = []
+        # comment_key -> mutable row dict, modeling the durable review_comments
+        # table (preserve PM resolution columns on watcher re-observation).
+        self.review_comments = {}
+        for row in comments or []:
+            self.review_comments[row["comment_key"]] = dict(row)
 
     def list_pr_watch_runs(self):
         return list(self.runs)
@@ -131,6 +165,103 @@ class FakeDbClient:
             block_reason=block_reason,
             metadata=metadata or {},
         )
+
+    # ----- review_comments (durable per-comment table) --------------------
+
+    def _record(self, key):
+        d = self.review_comments[key]
+        return ReviewCommentRecord(
+            agent_run_id="run-uuid",
+            github_comment_id=d["github_comment_id"],
+            body_hash=d["body_hash"],
+            comment_key=key,
+            pr_number=d["pr_number"],
+            source=d["source"],
+            watcher_verdict=d["watcher_verdict"],
+            resolution_status=d["resolution_status"],
+            pm_decision=d.get("pm_decision"),
+            handed_off_at=d.get("handed_off_at"),
+            resolved_at=d.get("resolved_at"),
+            addressed_by_commit_sha=d.get("addressed_by_commit_sha"),
+            verification_summary=d.get("verification_summary"),
+            verification_refs=d.get("verification_refs"),
+            original_body=d.get("original_body"),
+            original_path=d.get("original_path"),
+            original_line=d.get("original_line"),
+            original_commit_sha=d.get("original_commit_sha"),
+        )
+
+    def upsert_review_comment(
+        self, repo_full, issue_number, *, github_comment_id, body_hash, pr_number,
+        source, watcher_verdict, original_body=None, original_path=None,
+        original_line=None, original_commit_sha=None,
+    ):
+        key = f"{github_comment_id}:{body_hash}"
+        self.calls.append(("upsert", key, watcher_verdict, source))
+        existing = self.review_comments.get(key)
+        if existing is None:
+            self.review_comments[key] = {
+                "comment_key": key,
+                "github_comment_id": github_comment_id,
+                "body_hash": body_hash,
+                "pr_number": pr_number,
+                "source": source,
+                "watcher_verdict": watcher_verdict,
+                "resolution_status": "unresolved",
+                "pm_decision": None,
+                "handed_off_at": None,
+                "resolved_at": None,
+                "addressed_by_commit_sha": None,
+                "verification_summary": None,
+                "verification_refs": [],
+                "original_body": original_body,
+                "original_path": original_path,
+                "original_line": original_line,
+                "original_commit_sha": original_commit_sha,
+            }
+        else:
+            # Preserve the PM-owned resolution columns; refresh only what the
+            # watcher observes (mirrors the real ON CONFLICT clause).
+            existing.update({
+                "pr_number": pr_number,
+                "source": source,
+                "watcher_verdict": watcher_verdict,
+                "original_body": original_body,
+                "original_path": original_path,
+                "original_line": original_line,
+            })
+            if original_commit_sha is not None:
+                existing["original_commit_sha"] = original_commit_sha
+        return self._record(key)
+
+    def mark_review_comment_handed_off(self, repo_full, issue_number, comment_key):
+        self.calls.append(("handoff", comment_key))
+        d = self.review_comments[comment_key]
+        if d.get("handed_off_at") is None:
+            d["handed_off_at"] = "handed-off"
+        return self._record(comment_key)
+
+    def record_review_comment_resolution(
+        self, repo_full, issue_number, comment_key, *, resolution_status,
+        pm_decision=None, addressed_by_commit_sha=None, verification_summary=None,
+        verification_refs=None,
+    ):
+        self.calls.append(("record", comment_key, resolution_status))
+        d = self.review_comments[comment_key]
+        d.update({
+            "resolution_status": resolution_status,
+            "pm_decision": pm_decision,
+            "addressed_by_commit_sha": addressed_by_commit_sha,
+            "verification_summary": verification_summary,
+            "resolved_at": None if resolution_status == "unresolved" else "resolved",
+        })
+        if verification_refs is not None:
+            d["verification_refs"] = list(verification_refs)
+        return self._record(comment_key)
+
+    def list_review_comments(self, repo_full, issue_number):
+        self.calls.append(("list", repo_full, issue_number))
+        return [self._record(k) for k in self.review_comments]
 
 
 class TestStatusChecksGreen(unittest.TestCase):
@@ -278,17 +409,16 @@ class TestPrWatcherTransitions(unittest.TestCase):
 
     def test_first_must_fix_round_updates_then_assigns_fix(self):
         # A validated must-fix comment (validator returns valid_must_fix) drives
-        # the first fix round. The legacy must_fix_review_comments flag alone
-        # must NOT trigger fixing (it is routed through validation instead).
+        # the first fix round, recorded against the durable review_comments row.
         db = FakeDbClient([_run(pr_review_fix_rounds=0)])
-        c = ReviewComment(comment_id="c1", body="please fix", source="inline")
+        c = ReviewComment(comment_id="111", body="please fix", source="inline")
         assignments = []
 
         updated = reconcile_pr_run(
             db.runs[0],
             _reality(review_comments=(c,)),
             db,
-            assign_fix=lambda run, reality: assignments.append(
+            assign_fix=lambda run, reality, keys: assignments.append(
                 run.pr_review_fix_rounds
             ),
             validate_comment=lambda _c: "valid_must_fix",
@@ -296,14 +426,21 @@ class TestPrWatcherTransitions(unittest.TestCase):
 
         self.assertEqual(updated.phase, "fixing")
         self.assertEqual(updated.pr_review_fix_rounds, 1)
-        self.assertEqual(db.calls[0][0], "update_pr_fields")
-        self.assertTrue(db.calls[0][5])
+        upd = [x for x in db.calls if x[0] == "update_pr_fields"]
+        self.assertEqual(len(upd), 1)
+        self.assertEqual(upd[0][4], "fixing")
+        self.assertTrue(upd[0][5])  # increment_fix_rounds
         self.assertEqual(assignments, [1])
+        # The comment was persisted with the watcher verdict.
+        self.assertEqual(
+            db.review_comments[c.stable_key]["watcher_verdict"], "valid_must_fix",
+        )
 
     def test_second_must_fix_round_blocks_without_assignment(self):
-        # Round cap: a fresh validated must-fix with the budget exhausted blocks.
+        # Round cap: a still-unresolved validated must-fix with the budget
+        # exhausted blocks instead of being auto-fixed a second time.
         db = FakeDbClient([_run(pr_review_fix_rounds=1)])
-        c = ReviewComment(comment_id="c1", body="please fix", source="inline")
+        c = ReviewComment(comment_id="111", body="please fix", source="inline")
         assignments = []
 
         updated = reconcile_pr_run(
@@ -316,21 +453,25 @@ class TestPrWatcherTransitions(unittest.TestCase):
 
         self.assertEqual(updated.phase, "blocked")
         self.assertEqual(assignments, [])
-        self.assertEqual(db.calls[0][0], "blocked")
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertEqual(len(blocked), 1)
+        self.assertIn("remain after", blocked[0][3].lower())
 
     def test_green_without_must_fix_is_ready_to_merge(self):
         db = FakeDbClient([_run()])
         updated = reconcile_pr_run(db.runs[0], _reality(ci_green=True), db)
 
         self.assertEqual(updated.phase, "ready_to_merge")
-        self.assertEqual(db.calls[0][4], "ready_to_merge")
+        upd = [x for x in db.calls if x[0] == "update_pr_fields"]
+        self.assertEqual(upd[-1][4], "ready_to_merge")
 
     def test_pending_ci_keeps_watching(self):
         db = FakeDbClient([_run(phase="pr_open")])
         updated = reconcile_pr_run(db.runs[0], _reality(ci_green=False), db)
 
         self.assertEqual(updated.phase, "pr_watching")
-        self.assertEqual(db.calls[0][4], "pr_watching")
+        upd = [x for x in db.calls if x[0] == "update_pr_fields"]
+        self.assertEqual(upd[-1][4], "pr_watching")
 
     def test_check_once_fetches_pr_reality_for_listed_runs(self):
         db = FakeDbClient([_run(phase="pr_open")])
@@ -670,53 +811,6 @@ class TestDefaultValidationGate(unittest.TestCase):
         self.assertNotEqual(verdict, "valid_must_fix")
 
 
-class TestReviewCommentTriage(unittest.TestCase):
-    def _c(self, body="please fix this", cid="111"):
-        return ReviewComment(comment_id=cid, body=body, source="inline", path="a.dart", line=1)
-
-    def test_valid_must_fix_is_actionable_when_unattempted(self):
-        c = self._c()
-        t = triage_review_comments([c], {}, lambda _c: "valid_must_fix")
-        self.assertIn(c.stable_key, t.actionable_keys)
-        self.assertEqual(t.bookkeeping[c.stable_key]["verdict"], "valid_must_fix")
-        self.assertFalse(t.bookkeeping[c.stable_key]["attempted"])
-
-    def test_attempted_key_is_not_actionable_again(self):
-        c = self._c()
-        prior = {c.stable_key: {"verdict": "valid_must_fix", "attempted": True}}
-        t = triage_review_comments([c], prior, lambda _c: "valid_must_fix")
-        self.assertEqual(t.actionable_keys, [])
-        # attempted state is preserved.
-        self.assertTrue(t.bookkeeping[c.stable_key]["attempted"])
-
-    def test_changed_body_becomes_new_candidate(self):
-        c1 = self._c(body="old body")
-        prior = {c1.stable_key: {"verdict": "valid_must_fix", "attempted": True}}
-        c2 = self._c(body="new different body")  # same id, new body -> new key
-        self.assertNotEqual(c1.stable_key, c2.stable_key)
-        t = triage_review_comments([c2], prior, lambda _c: "valid_must_fix")
-        self.assertIn(c2.stable_key, t.actionable_keys)
-        self.assertFalse(t.bookkeeping[c2.stable_key]["attempted"])
-
-    def test_invalid_and_optional_are_not_actionable(self):
-        ci = self._c(body="resolved already", cid="1")
-        co = self._c(body="nit", cid="2")
-        t = triage_review_comments(
-            [ci, co], {},
-            lambda c: "invalid" if c.comment_id == "1" else "valid_optional",
-        )
-        self.assertEqual(t.actionable_keys, [])
-        self.assertEqual(t.needs_judgment_keys, [])
-        self.assertIn(ci.stable_key, t.invalid_keys)
-        self.assertIn(co.stable_key, t.optional_keys)
-
-    def test_needs_user_judgment_collected(self):
-        c = self._c()
-        t = triage_review_comments([c], {}, lambda _c: "needs_user_judgment")
-        self.assertIn(c.stable_key, t.needs_judgment_keys)
-        self.assertEqual(t.actionable_keys, [])
-
-
 class TestValidatedCommentReconcile(unittest.TestCase):
     def _inline(self, cid="111", body="please fix this", **o):
         return ReviewComment(
@@ -732,36 +826,32 @@ class TestValidatedCommentReconcile(unittest.TestCase):
             db.runs[0],
             _reality(review_comments=(c,)),
             db,
-            assign_fix=lambda run, reality: assignments.append(reality),
+            assign_fix=lambda run, reality, keys: assignments.append(reality),
             validate_comment=lambda _c: "valid_must_fix",
         )
 
         self.assertEqual(updated.phase, "fixing")
         self.assertEqual(updated.pr_review_fix_rounds, 1)
         self.assertEqual(len(assignments), 1)
-        self.assertEqual(db.calls[0][0], "update_pr_fields")
-        self.assertTrue(db.calls[0][5])  # increment_fix_rounds
-        meta = db.calls[0][-1]
-        entry = meta["pr_review_comments"][c.stable_key]
-        self.assertEqual(entry["verdict"], "valid_must_fix")
-        self.assertTrue(entry["attempted"])
+        upd = [x for x in db.calls if x[0] == "update_pr_fields"]
+        self.assertEqual(len(upd), 1)
+        self.assertTrue(upd[0][5])  # increment_fix_rounds
+        # The durable row records the watcher verdict and stays unresolved
+        # until the PM records a resolution.
+        row = db.review_comments[c.stable_key]
+        self.assertEqual(row["watcher_verdict"], "valid_must_fix")
+        self.assertEqual(row["resolution_status"], "unresolved")
 
     def test_same_comment_not_fixed_twice_and_not_ready_to_merge(self):
-        # Finding 2: a valid must-fix already attempted once and still present
-        # must NOT slip to ready_to_merge even with green CI, and must NOT get a
-        # second fix; it escalates to a human instead.
+        # A valid must-fix still unresolved after the one allowed round must NOT
+        # slip to ready_to_merge even with green CI, and must NOT be auto-fixed a
+        # second time; it escalates to a human instead.
         c = self._inline()
-        run = _run(
-            pr_review_fix_rounds=1,
-            metadata={"pr_review_comments": {
-                c.stable_key: {"verdict": "valid_must_fix", "attempted": True},
-            }},
-        )
-        db = FakeDbClient([run])
+        db = FakeDbClient([_run(pr_review_fix_rounds=1)])
         assignments = []
 
         updated = reconcile_pr_run(
-            run,
+            db.runs[0],
             _reality(review_comments=(c,), ci_green=True),
             db,
             assign_fix=lambda *a: assignments.append(a),
@@ -770,31 +860,84 @@ class TestValidatedCommentReconcile(unittest.TestCase):
 
         self.assertEqual(updated.phase, "blocked")
         self.assertEqual(assignments, [])
-        self.assertEqual(db.calls[0][0], "blocked")
-        self.assertIn("remain after", db.calls[0][3].lower())
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertEqual(len(blocked), 1)
+        self.assertIn("remain after", blocked[0][3].lower())
 
     def test_changed_body_can_be_fixed_again_as_new_candidate(self):
         old = self._inline(body="old advice")
         new = self._inline(body="new advice entirely")
-        run = _run(
-            pr_review_fix_rounds=0,
-            metadata={"pr_review_comments": {
-                old.stable_key: {"verdict": "valid_must_fix", "attempted": True},
-            }},
+        # The old body was already addressed; the edited comment has a new
+        # comment_key, so it is a fresh fix candidate.
+        db = FakeDbClient(
+            [_run(pr_review_fix_rounds=0)],
+            comments=[_seed(
+                old, watcher_verdict="valid_must_fix", resolution_status="addressed",
+                addressed_by_commit_sha="abc", verification_summary="done",
+                resolved_at="resolved",
+            )],
         )
-        db = FakeDbClient([run])
         assignments = []
 
+        self.assertNotEqual(old.stable_key, new.stable_key)
         updated = reconcile_pr_run(
-            run,
+            db.runs[0],
             _reality(review_comments=(new,)),
             db,
-            assign_fix=lambda run, reality: assignments.append(reality),
+            assign_fix=lambda run, reality, keys: assignments.append(reality),
             validate_comment=lambda _c: "valid_must_fix",
         )
 
         self.assertEqual(updated.phase, "fixing")
         self.assertEqual(len(assignments), 1)
+
+    def test_mixed_must_fix_and_judgment_assigns_only_must_fix(self):
+        # valid_must_fix + needs_user_judgment in one fetch: only the must-fix
+        # key is assigned to the fix round. The needs_user_judgment row stays
+        # unresolved and un-handed-off, so it follows its own handoff/block path
+        # on a later pass (after the must-fix resolution is recorded + re-armed).
+        must = self._inline(cid="111", body="must fix this")
+        judg = self._inline(cid="222", body="needs a product choice")
+        db = FakeDbClient([_run(pr_review_fix_rounds=0)])
+        assigned = []
+
+        first = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(must, judg), ci_green=True),
+            db,
+            assign_fix=lambda run, reality, keys: assigned.append(list(keys)),
+            validate_comment=lambda c: (
+                "valid_must_fix" if c.comment_id == "111" else "needs_user_judgment"
+            ),
+        )
+
+        self.assertEqual(first.phase, "fixing")
+        self.assertEqual(assigned, [[must.stable_key]])
+        self.assertEqual(
+            db.review_comments[judg.stable_key]["resolution_status"], "unresolved",
+        )
+        self.assertIsNone(db.review_comments[judg.stable_key]["handed_off_at"])
+
+        # PM records the must-fix resolution and re-arms; the judgment comment is
+        # now the actionable one and is handed off -- it was never swept into the
+        # earlier must-fix repair prompt.
+        db.record_review_comment_resolution(
+            "o/r", 12, must.stable_key, resolution_status="addressed",
+            pm_decision="valid_must_fix", addressed_by_commit_sha="abc",
+            verification_summary="fixed; tests green",
+        )
+        handoffs = []
+        second = reconcile_pr_run(
+            _run(phase="pr_open", pr_review_fix_rounds=1),
+            _reality(review_comments=(must, judg), ci_green=True),
+            db,
+            dispatch_handoff=lambda run, reality, keys: handoffs.append(list(keys)) or True,
+            validate_comment=lambda c: (
+                "valid_must_fix" if c.comment_id == "111" else "needs_user_judgment"
+            ),
+        )
+        self.assertEqual(second.phase, "fixing")
+        self.assertEqual(handoffs, [[judg.stable_key]])
 
     def test_needs_user_judgment_blocks(self):
         db = FakeDbClient([_run()])
@@ -807,8 +950,9 @@ class TestValidatedCommentReconcile(unittest.TestCase):
         )
 
         self.assertEqual(updated.phase, "blocked")
-        self.assertEqual(db.calls[0][0], "blocked")
-        self.assertIn("user judgment", db.calls[0][3].lower())
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertEqual(len(blocked), 1)
+        self.assertIn("user judgment", blocked[0][3].lower())
 
     def test_invalid_inline_comment_does_not_block_or_fix(self):
         db = FakeDbClient([_run(pr_review_fix_rounds=0)])
@@ -822,6 +966,76 @@ class TestValidatedCommentReconcile(unittest.TestCase):
         )
 
         self.assertEqual(updated.phase, "ready_to_merge")
+
+    def test_valid_optional_does_not_block(self):
+        db = FakeDbClient([_run()])
+        c = self._inline(body="nit: rename")
+        updated = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            validate_comment=lambda _c: "valid_optional",
+        )
+        self.assertEqual(updated.phase, "ready_to_merge")
+
+    def test_pm_addressed_resolution_does_not_block(self):
+        # The core fix: a comment the PM recorded as addressed is non-blocking on
+        # the next watcher pass, even though the watcher re-validates it as
+        # needs_user_judgment.
+        c = self._inline()
+        db = FakeDbClient(
+            [_run(phase="pr_open")],
+            comments=[_seed(
+                c, watcher_verdict="needs_user_judgment", resolution_status="addressed",
+                handed_off_at="handed-off", addressed_by_commit_sha="b6cd1ad",
+                verification_summary="guarded; tests green", resolved_at="resolved",
+            )],
+        )
+        updated = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(updated.phase, "ready_to_merge")
+
+    def test_pm_rejected_resolution_does_not_block(self):
+        c = self._inline()
+        db = FakeDbClient(
+            [_run(phase="pr_open")],
+            comments=[_seed(
+                c, watcher_verdict="needs_user_judgment", resolution_status="rejected",
+                handed_off_at="handed-off",
+                verification_summary="contradicts the issue spec", resolved_at="resolved",
+            )],
+        )
+        updated = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(updated.phase, "ready_to_merge")
+
+    def test_pm_escalated_resolution_blocks(self):
+        c = self._inline()
+        db = FakeDbClient(
+            [_run(phase="pr_open")],
+            comments=[_seed(
+                c, watcher_verdict="needs_user_judgment",
+                resolution_status="needs_user_judgment", handed_off_at="handed-off",
+                verification_summary="needs a product decision", resolved_at="resolved",
+            )],
+        )
+        updated = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(updated.phase, "blocked")
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertIn("user judgment", blocked[0][3].lower())
 
     def test_merged_pr_wins_over_needs_user_judgment(self):
         db = FakeDbClient([_run()])
@@ -905,8 +1119,9 @@ class TestLegacyCommentsRoutedThroughValidation(unittest.TestCase):
         updated = reconcile_pr_run(db.runs[0], reality, db)
         # Escalated for validation, never auto-fixed from marker text alone.
         self.assertEqual(updated.phase, "blocked")
-        self.assertNotEqual(db.calls[0][0], "update_pr_fields")
-        self.assertIn("user judgment", db.calls[0][3].lower())
+        self.assertNotIn("update_pr_fields", [x[0] for x in db.calls])
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertIn("user judgment", blocked[0][3].lower())
 
     def test_top_level_must_fix_comment_not_fixed_when_validator_rejects(self):
         reality = self._reality_with(
@@ -929,7 +1144,8 @@ class TestLegacyCommentsRoutedThroughValidation(unittest.TestCase):
         db = FakeDbClient([_run()])
         updated = reconcile_pr_run(db.runs[0], reality, db)
         self.assertEqual(updated.phase, "blocked")
-        self.assertIn("user judgment", db.calls[0][3].lower())
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertIn("user judgment", blocked[0][3].lower())
 
     def test_changes_requested_latest_review_escalates_not_fixes(self):
         reality = self._reality_with(
@@ -938,7 +1154,7 @@ class TestLegacyCommentsRoutedThroughValidation(unittest.TestCase):
         db = FakeDbClient([_run()])
         updated = reconcile_pr_run(db.runs[0], reality, db)
         self.assertEqual(updated.phase, "blocked")
-        self.assertNotEqual(db.calls[0][0], "update_pr_fields")
+        self.assertNotIn("update_pr_fields", [x[0] for x in db.calls])
 
     def test_changes_requested_state_validates_to_needs_user_judgment(self):
         c = ReviewComment(
@@ -952,39 +1168,6 @@ class TestLegacyCommentsRoutedThroughValidation(unittest.TestCase):
             comment_id="r1", body="", source="latest_review", state="APPROVED",
         )
         self.assertEqual(default_validate_comment(c), "valid_optional")
-
-
-class TestBookkeepingMerge(unittest.TestCase):
-    """Finding 4: prior per-comment attempted state must survive a pass that
-    sees an empty or unrelated comment list."""
-
-    def test_prior_attempted_key_preserved_when_no_current_comments(self):
-        prior = {"111:abc": {"verdict": "valid_must_fix", "attempted": True}}
-        t = triage_review_comments([], prior, lambda _c: "valid_must_fix")
-        self.assertIn("111:abc", t.bookkeeping)
-        self.assertTrue(t.bookkeeping["111:abc"]["attempted"])
-
-    def test_prior_key_preserved_alongside_unrelated_current_comment(self):
-        prior = {"111:abc": {"verdict": "valid_must_fix", "attempted": True}}
-        other = ReviewComment(comment_id="222", body="new note", source="inline")
-        t = triage_review_comments([other], prior, lambda _c: "valid_optional")
-        self.assertIn("111:abc", t.bookkeeping)
-        self.assertTrue(t.bookkeeping["111:abc"]["attempted"])
-        self.assertIn(other.stable_key, t.bookkeeping)
-
-    def test_reconcile_persists_prior_attempted_key_with_empty_comments(self):
-        prior_key = "111:abc"
-        run = _run(
-            phase="pr_open",
-            metadata={"pr_review_comments": {
-                prior_key: {"verdict": "valid_must_fix", "attempted": True},
-            }},
-        )
-        db = FakeDbClient([run])
-        reconcile_pr_run(run, _reality(review_comments=()), db)
-        meta = db.calls[0][-1]
-        self.assertIn(prior_key, meta["pr_review_comments"])
-        self.assertTrue(meta["pr_review_comments"][prior_key]["attempted"])
 
 
 class TestLiveValidationHandoff(unittest.TestCase):
@@ -1010,30 +1193,33 @@ class TestLiveValidationHandoff(unittest.TestCase):
             validate_comment=lambda _c: "needs_user_judgment",
         )
 
-        # Dispatched, parked in 'fixing', recorded handed_off, NOT blocked.
+        # Dispatched, parked in 'fixing', handed_off_at stamped in the table.
         self.assertEqual(handoffs, [[c.stable_key]])
         self.assertEqual(updated.phase, "fixing")
-        self.assertEqual(db.calls[0][0], "update_pr_fields")
-        meta = db.calls[0][-1]
-        self.assertTrue(meta["pr_review_comments"][c.stable_key]["handed_off"])
+        upd = [x for x in db.calls if x[0] == "update_pr_fields"]
+        self.assertEqual(upd[-1][4], "fixing")
+        self.assertIsNotNone(db.review_comments[c.stable_key]["handed_off_at"])
+        self.assertIn(("handoff", c.stable_key), db.calls)
+        meta = upd[-1][-1]
         self.assertIn(
             c.stable_key,
-            meta["pr_watcher"]["review_comment_triage"]["handed_off"],
+            meta["pr_watcher"]["review_comments"]["handed_off"],
         )
 
     def test_already_handed_off_key_escalates_instead_of_resending(self):
         c = self._inline()
-        run = _run(
-            phase="pr_watching",
-            metadata={"pr_review_comments": {
-                c.stable_key: {"verdict": "needs_user_judgment", "handed_off": True},
-            }},
+        # Comment was handed off on a prior pass but the PM re-armed without
+        # recording a resolution: still unresolved + handed_off_at set.
+        db = FakeDbClient(
+            [_run(phase="pr_watching")],
+            comments=[_seed(
+                c, watcher_verdict="needs_user_judgment", handed_off_at="handed-off",
+            )],
         )
-        db = FakeDbClient([run])
         handoffs = []
 
         updated = reconcile_pr_run(
-            run,
+            db.runs[0],
             _reality(review_comments=(c,)),
             db,
             dispatch_handoff=lambda *a: handoffs.append(a) or True,
@@ -1043,8 +1229,9 @@ class TestLiveValidationHandoff(unittest.TestCase):
         # Not re-sent; escalated to a human block.
         self.assertEqual(handoffs, [])
         self.assertEqual(updated.phase, "blocked")
-        self.assertEqual(db.calls[0][0], "blocked")
-        self.assertIn("user judgment", db.calls[0][3].lower())
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertEqual(len(blocked), 1)
+        self.assertIn("user judgment", blocked[0][3].lower())
 
     def test_delivery_failure_does_not_mark_handed_off(self):
         db = FakeDbClient([_run(phase="pr_watching")])
@@ -1058,10 +1245,10 @@ class TestLiveValidationHandoff(unittest.TestCase):
             validate_comment=lambda _c: "needs_user_judgment",
         )
 
-        # Keep watching and retry; handed_off must stay unset so it is re-tried.
+        # Keep watching and retry; handed_off_at stays unset so it is re-tried.
         self.assertEqual(updated.phase, "pr_watching")
-        meta = db.calls[0][-1]
-        self.assertFalse(meta["pr_review_comments"][c.stable_key]["handed_off"])
+        self.assertIsNone(db.review_comments[c.stable_key]["handed_off_at"])
+        self.assertNotIn(("handoff", c.stable_key), db.calls)
 
     def test_without_dispatcher_default_still_blocks(self):
         db = FakeDbClient([_run(phase="pr_watching")])
@@ -1141,7 +1328,7 @@ class TestLiveValidationHandoff(unittest.TestCase):
         )
         for prompt in (
             build_validation_handoff_prompt(run, reality, [c.stable_key]),
-            build_fix_prompt(run, reality),
+            build_fix_prompt(run, reality, [c.stable_key]),
         ):
             with self.subTest(prompt=prompt.splitlines()[0]):
                 self.assertIn(expected, prompt)
@@ -1248,6 +1435,166 @@ class TestPhraseSafeMarkers(unittest.TestCase):
         self.assertFalse(
             _body_is_validation_candidate("this is blocking but already addressed")
         )
+
+
+class TestHandoffPromptRecordsResolution(unittest.TestCase):
+    """The PM hand-off and fix prompts must tell the PM to record a durable
+    resolution in review_comments (via the CLI) before re-arming the watcher."""
+
+    def _comment(self):
+        return ReviewComment(
+            comment_id="3409641728", body="guard context.mounted here",
+            source="inline", path="a.dart", line=7,
+        )
+
+    def test_handoff_prompt_includes_record_command_per_key(self):
+        run = _run()
+        c = self._comment()
+        prompt = build_validation_handoff_prompt(
+            run, _reality(review_comments=(c,)), [c.stable_key],
+        )
+        self.assertIn("u_agents.record_review_comment_resolution", prompt)
+        self.assertIn("--comment-key", prompt)
+        self.assertIn(
+            record_resolution_command("o/r", 12, c.stable_key), prompt,
+        )
+
+    def test_handoff_prompt_requires_db_record_before_rearm(self):
+        run = _run()
+        c = self._comment()
+        prompt = build_validation_handoff_prompt(
+            run, _reality(review_comments=(c,)), [c.stable_key],
+        )
+        self.assertIn("BEFORE re-arming", prompt)
+        self.assertIn("review_comments table", prompt)
+        self.assertIn("addressed requires --commit-sha", prompt)
+
+    def test_fix_prompt_includes_record_command(self):
+        run = _run()
+        c = ReviewComment(comment_id="111", body="x", source="inline")
+        prompt = build_fix_prompt(run, _reality(review_comments=(c,)), [c.stable_key])
+        self.assertIn("u_agents.record_review_comment_resolution", prompt)
+        self.assertIn(
+            record_resolution_command("o/r", 12, c.stable_key), prompt,
+        )
+
+    def test_fix_prompt_lists_only_assigned_must_fix_keys(self):
+        # A needs_user_judgment comment present in the same fetch must NOT appear
+        # in the must-fix repair prompt (neither its listing nor a record
+        # command). Only the assigned must-fix key is included.
+        run = _run()
+        must = ReviewComment(comment_id="111", body="must fix this", source="inline")
+        judg = ReviewComment(comment_id="222", body="needs choice", source="inline")
+        prompt = build_fix_prompt(
+            run, _reality(review_comments=(must, judg)), [must.stable_key],
+        )
+        self.assertIn(must.stable_key, prompt)
+        self.assertNotIn(judg.stable_key, prompt)
+        self.assertIn(
+            record_resolution_command("o/r", 12, must.stable_key), prompt,
+        )
+        self.assertNotIn(
+            record_resolution_command("o/r", 12, judg.stable_key), prompt,
+        )
+
+
+class TestReArmBlackboxFlow(unittest.TestCase):
+    """End-to-end (table-backed fake): detect -> hand off -> PM records a
+    resolution -> mark_pr_open re-arm -> watcher re-decides. The durable
+    review_comments row is what carries the resolution across the re-arm."""
+
+    def _comment(self):
+        return ReviewComment(
+            comment_id="3409641728", body="guard context.mounted",
+            source="inline", path="a.dart", line=1,
+        )
+
+    def test_detect_handoff_resolve_rearm_reaches_ready_to_merge(self):
+        c = self._comment()
+        db = FakeDbClient([_run(phase="pr_watching")])
+
+        # Pass 1: watcher detects the comment and hands it off.
+        first = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            dispatch_handoff=lambda *a: True,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(first.phase, "fixing")
+        self.assertIsNotNone(db.review_comments[c.stable_key]["handed_off_at"])
+
+        # PM records the resolution durably (addressed + commit + verification).
+        db.record_review_comment_resolution(
+            "o/r", 12, c.stable_key,
+            resolution_status="addressed", pm_decision="valid_must_fix",
+            addressed_by_commit_sha="b6cd1ad",
+            verification_summary="guarded with context.mounted; flutter test green",
+        )
+
+        # PM re-arms via mark_pr_open (status -> pr_open); watcher re-decides.
+        second = reconcile_pr_run(
+            _run(phase="pr_open"),
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            dispatch_handoff=lambda *a: True,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(second.phase, "ready_to_merge")
+
+    def test_rearm_without_recording_resolution_blocks(self):
+        c = self._comment()
+        db = FakeDbClient([_run(phase="pr_watching")])
+
+        first = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            dispatch_handoff=lambda *a: True,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(first.phase, "fixing")
+
+        # PM re-arms WITHOUT recording a resolution: still unresolved + handed off.
+        second = reconcile_pr_run(
+            _run(phase="pr_open"),
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            dispatch_handoff=lambda *a: True,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(second.phase, "blocked")
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertIn("user judgment", blocked[-1][3].lower())
+
+    def test_rearm_with_empty_fetch_still_blocks_handed_off_unresolved(self):
+        # A later GitHub fetch returning no review comments (partial/transient,
+        # or the comment dropped from the listing) must NOT let a handed-off but
+        # unresolved comment slip to ready_to_merge. The durable table row keeps
+        # the run blocked until the PM records a resolution.
+        c = self._comment()
+        db = FakeDbClient([_run(phase="pr_watching")])
+
+        first = reconcile_pr_run(
+            db.runs[0],
+            _reality(review_comments=(c,), ci_green=True),
+            db,
+            dispatch_handoff=lambda *a: True,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(first.phase, "fixing")
+
+        # PM re-arms; next fetch returns NO review comments at all.
+        second = reconcile_pr_run(
+            _run(phase="pr_open"),
+            _reality(review_comments=(), ci_green=True),
+            db,
+            dispatch_handoff=lambda *a: True,
+            validate_comment=lambda _c: "needs_user_judgment",
+        )
+        self.assertEqual(second.phase, "blocked")
+        blocked = [x for x in db.calls if x[0] == "blocked"]
+        self.assertIn(c.stable_key, blocked[-1][3])
 
 
 if __name__ == "__main__":

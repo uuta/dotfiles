@@ -5,7 +5,10 @@ from datetime import datetime, timezone
 from u_agents.agent_runs import (
     AgentRunsClient,
     ClaimPayload,
+    ReviewCommentRecord,
     build_claim_payload,
+    validate_comment_key,
+    validate_verification_refs,
 )
 from u_agents.contract import REVIEW_RESULT_RELATIVE_PATH, RepoConfig
 from u_agents.control_plane import RunnerIdentity
@@ -69,6 +72,24 @@ class FakeConn:
 
     def commit(self):
         self.commits += 1
+
+
+class TestReviewCommentValidators(unittest.TestCase):
+    def test_comment_key_requires_colon_and_non_empty_parts(self):
+        for bad in ("", "   ", "nocolon", ":abc", "1:", "  :  "):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    validate_comment_key(bad)
+
+    def test_comment_key_accepts_signed_id_and_hash(self):
+        # Synthetic review signals use deterministic signed ids; keep them valid.
+        for good in ("3409641728:1cf66a90f911", "-123:deadbeef", "1:abc"):
+            with self.subTest(good=good):
+                self.assertEqual(validate_comment_key(good), good)
+
+    def test_verification_refs_non_serializable_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            validate_verification_refs([object()])
 
 
 class TestClaimPayload(unittest.TestCase):
@@ -303,6 +324,245 @@ class TestAgentRunsClientWrites(unittest.TestCase):
             client = AgentRunsClient(conn, self.identity)
             getattr(client, method)()
             self.assertEqual(conn.commits, 1, f"{method} should commit once")
+
+
+def _rc_row(**overrides):
+    base = {
+        "agent_run_id": "run-uuid",
+        "github_comment_id": 3409641728,
+        "body_hash": "1cf66a90f911",
+        "comment_key": "3409641728:1cf66a90f911",
+        "pr_number": 41,
+        "source": "inline_review",
+        "watcher_verdict": "needs_user_judgment",
+        "pm_decision": None,
+        "resolution_status": "unresolved",
+        "original_body": "guard context.mounted",
+        "original_path": "a.dart",
+        "original_line": 144,
+        "original_commit_sha": None,
+        "handed_off_at": None,
+        "resolved_at": None,
+        "addressed_by_commit_sha": None,
+        "verification_summary": None,
+        "verification_refs": [],
+    }
+    base.update(overrides)
+    return base
+
+
+class TestReviewCommentsClient(unittest.TestCase):
+    def setUp(self):
+        self.identity = RunnerIdentity("runner-1", "machine-1")
+
+    def _client(self, rows):
+        return AgentRunsClient(FakeConn(rows), self.identity)
+
+    # ----- upsert ----------------------------------------------------------
+
+    def test_upsert_review_comment_generates_insert_select_on_conflict(self):
+        conn = FakeConn([_rc_row()])
+        client = AgentRunsClient(conn, self.identity)
+
+        record = client.upsert_review_comment(
+            "o/r", 41,
+            github_comment_id=3409641728,
+            body_hash="1cf66a90f911",
+            pr_number=41,
+            source="inline_review",
+            watcher_verdict="needs_user_judgment",
+            original_body="guard context.mounted",
+            original_path="a.dart",
+            original_line=144,
+        )
+
+        self.assertIsInstance(record, ReviewCommentRecord)
+        self.assertEqual(record.comment_key, "3409641728:1cf66a90f911")
+        self.assertEqual(record.resolution_status, "unresolved")
+        self.assertEqual(conn.commits, 1)
+        sql, params = conn.calls[0]
+        self.assertIn("INSERT INTO review_comments", sql)
+        self.assertIn("SELECT run_id", sql)
+        self.assertIn("ON CONFLICT ON CONSTRAINT review_comments_pkey DO UPDATE", sql)
+        self.assertIn("RETURNING", sql)
+        self.assertEqual(params["github_comment_id"], 3409641728)
+        self.assertEqual(params["body_hash"], "1cf66a90f911")
+        self.assertEqual(params["watcher_verdict"], "needs_user_judgment")
+
+    def test_upsert_preserves_pm_resolution_columns_on_conflict(self):
+        # The duplicate comment_key must update the same row WITHOUT clobbering
+        # the PM-owned resolution columns; the upsert SET clause must not touch
+        # them at all.
+        conn = FakeConn([_rc_row()])
+        client = AgentRunsClient(conn, self.identity)
+        client.upsert_review_comment(
+            "o/r", 41,
+            github_comment_id=1, body_hash="abc", pr_number=41,
+            source="inline_review", watcher_verdict="valid_optional",
+        )
+        sql, _params = conn.calls[0]
+        # Only the ON CONFLICT ... SET clause (before RETURNING) decides what is
+        # overwritten; RETURNING legitimately lists every column.
+        update_clause = sql.split("DO UPDATE", 1)[1].split("RETURNING", 1)[0]
+        for owned in (
+            "resolution_status",
+            "pm_decision",
+            "handed_off_at",
+            "resolved_at",
+            "addressed_by_commit_sha",
+            "verification_summary",
+            "verification_refs",
+        ):
+            with self.subTest(column=owned):
+                self.assertNotIn(owned, update_clause)
+        # It does refresh the watcher-observed fields and last_seen_at.
+        self.assertIn("watcher_verdict = EXCLUDED.watcher_verdict", update_clause)
+        self.assertIn("last_seen_at = now()", update_clause)
+
+    def test_upsert_validates_inputs_before_db(self):
+        for kwargs in (
+            {"source": "bogus"},
+            {"watcher_verdict": "bogus"},
+            {"pr_number": 0},
+            {"body_hash": "  "},
+        ):
+            with self.subTest(kwargs=kwargs):
+                conn = FakeConn([_rc_row()])
+                client = AgentRunsClient(conn, self.identity)
+                base = {
+                    "github_comment_id": 1,
+                    "body_hash": "abc",
+                    "pr_number": 41,
+                    "source": "inline_review",
+                    "watcher_verdict": "needs_user_judgment",
+                }
+                base.update(kwargs)
+                with self.assertRaises(ValueError):
+                    client.upsert_review_comment("o/r", 41, **base)
+                self.assertEqual(conn.calls, [])
+
+    def test_upsert_raises_when_agent_run_missing(self):
+        conn = FakeConn([])  # INSERT...SELECT matched no agent_runs row
+        client = AgentRunsClient(conn, self.identity)
+        with self.assertRaises(RuntimeError):
+            client.upsert_review_comment(
+                "o/r", 41, github_comment_id=1, body_hash="abc", pr_number=41,
+                source="inline_review", watcher_verdict="needs_user_judgment",
+            )
+
+    # ----- hand-off --------------------------------------------------------
+
+    def test_mark_review_comment_handed_off_is_idempotent_coalesce(self):
+        conn = FakeConn([_rc_row(handed_off_at="2026-06-14T00:00:00Z")])
+        client = AgentRunsClient(conn, self.identity)
+        record = client.mark_review_comment_handed_off(
+            "o/r", 41, "3409641728:1cf66a90f911",
+        )
+        self.assertIsNotNone(record.handed_off_at)
+        sql, params = conn.calls[0]
+        self.assertIn("UPDATE review_comments", sql)
+        self.assertIn("handed_off_at = COALESCE(rc.handed_off_at, now())", sql)
+        self.assertEqual(params["comment_key"], "3409641728:1cf66a90f911")
+
+    def test_mark_review_comment_handed_off_raises_when_missing(self):
+        conn = FakeConn([])
+        client = AgentRunsClient(conn, self.identity)
+        with self.assertRaises(RuntimeError):
+            client.mark_review_comment_handed_off("o/r", 41, "9:deadbeef")
+
+    # ----- record resolution ----------------------------------------------
+
+    def test_record_resolution_addressed_writes_commit_and_verification(self):
+        conn = FakeConn([_rc_row(
+            resolution_status="addressed", pm_decision="valid_must_fix",
+            addressed_by_commit_sha="b6cd1ad",
+            verification_summary="guarded; tests green", resolved_at="2026-06-14",
+        )])
+        client = AgentRunsClient(conn, self.identity)
+        record = client.record_review_comment_resolution(
+            "o/r", 41, "3409641728:1cf66a90f911",
+            resolution_status="addressed", pm_decision="valid_must_fix",
+            addressed_by_commit_sha="b6cd1ad",
+            verification_summary="guarded; tests green",
+            verification_refs=["https://ci/run/1"],
+        )
+        self.assertEqual(record.resolution_status, "addressed")
+        sql, params = conn.calls[0]
+        self.assertIn("UPDATE review_comments", sql)
+        self.assertIn("resolution_status = %(resolution_status)s", sql)
+        self.assertIn("WHEN %(resolution_status)s = 'unresolved' THEN NULL", sql)
+        self.assertEqual(params["addressed_by_commit_sha"], "b6cd1ad")
+        self.assertEqual(json.loads(params["verification_refs"]), ["https://ci/run/1"])
+
+    def test_record_resolution_addressed_requires_commit_and_verification(self):
+        for kwargs in (
+            {"addressed_by_commit_sha": None, "verification_summary": "v"},
+            {"addressed_by_commit_sha": "sha", "verification_summary": None},
+            {"addressed_by_commit_sha": "  ", "verification_summary": "v"},
+            {"addressed_by_commit_sha": "sha", "verification_summary": "   "},
+        ):
+            with self.subTest(kwargs=kwargs):
+                conn = FakeConn([_rc_row()])
+                client = AgentRunsClient(conn, self.identity)
+                with self.assertRaises(ValueError):
+                    client.record_review_comment_resolution(
+                        "o/r", 41, "1:abc", resolution_status="addressed", **kwargs,
+                    )
+                self.assertEqual(conn.calls, [])
+
+    def test_record_resolution_rejected_and_judgment_require_reason(self):
+        for status in ("rejected", "needs_user_judgment"):
+            with self.subTest(status=status):
+                conn = FakeConn([_rc_row()])
+                client = AgentRunsClient(conn, self.identity)
+                with self.assertRaises(ValueError):
+                    client.record_review_comment_resolution(
+                        "o/r", 41, "1:abc", resolution_status=status,
+                        verification_summary=None,
+                    )
+                self.assertEqual(conn.calls, [])
+
+    def test_record_resolution_rejects_non_list_verification_refs(self):
+        conn = FakeConn([_rc_row()])
+        client = AgentRunsClient(conn, self.identity)
+        with self.assertRaises(ValueError):
+            client.record_review_comment_resolution(
+                "o/r", 41, "1:abc", resolution_status="rejected",
+                verification_summary="reason", verification_refs="not-a-list",
+            )
+        self.assertEqual(conn.calls, [])
+
+    def test_record_resolution_rejects_unknown_status_and_decision(self):
+        conn = FakeConn([_rc_row()])
+        client = AgentRunsClient(conn, self.identity)
+        with self.assertRaises(ValueError):
+            client.record_review_comment_resolution(
+                "o/r", 41, "1:abc", resolution_status="bogus",
+            )
+        with self.assertRaises(ValueError):
+            client.record_review_comment_resolution(
+                "o/r", 41, "1:abc", resolution_status="rejected",
+                pm_decision="bogus", verification_summary="reason",
+            )
+
+    def test_record_resolution_raises_when_missing(self):
+        conn = FakeConn([])
+        client = AgentRunsClient(conn, self.identity)
+        with self.assertRaises(RuntimeError):
+            client.record_review_comment_resolution(
+                "o/r", 41, "9:deadbeef", resolution_status="rejected",
+                verification_summary="reason",
+            )
+
+    def test_list_review_comments_joins_and_commits(self):
+        conn = FakeConn([_rc_row(), _rc_row(comment_key="2:def", github_comment_id=2)])
+        client = AgentRunsClient(conn, self.identity)
+        records = client.list_review_comments("o/r", 41)
+        self.assertEqual(len(records), 2)
+        self.assertEqual(conn.commits, 1)
+        sql, _params = conn.calls[0]
+        self.assertIn("FROM review_comments", sql)
+        self.assertIn("JOIN agent_runs", sql)
 
 
 if __name__ == "__main__":

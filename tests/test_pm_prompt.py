@@ -41,6 +41,20 @@ class TestPmPromptContent(unittest.TestCase):
             self.text,
         )
 
+    def test_records_review_comment_resolution_before_rearm(self):
+        # Issue #20: the PM must persist a durable resolution in the DB before
+        # re-arming the watcher; a GitHub comment is not durable state.
+        self.assertIn("# PR review comment resolution", self.text)
+        self.assertIn(
+            "PYTHONPATH={u_agents_root} {u_agents_python} "
+            "-m u_agents.record_review_comment_resolution",
+            self.text,
+        )
+        self.assertIn("BEFORE you re-arm the watcher", self.text)
+        self.assertRegex(self.text, r"addressed.*requires.*--commit-sha")
+        # mark_pr_open does not own review comment resolution.
+        self.assertIn("mark_pr_open` only\nre-arms the watcher", self.text)
+
 
 class TestPmPromptRenders(unittest.TestCase):
     """The whole template must still render: every {placeholder} added for the
