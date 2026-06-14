@@ -101,11 +101,13 @@ class FakeDbClient:
         issue_number,
         *,
         pr_number=None,
+        status=None,
         phase=None,
         increment_fix_rounds=False,
         block_reason=None,
         metadata=None,
     ):
+        phase = phase or status
         self.calls.append((
             "update_pr_fields",
             repo_full,
@@ -626,6 +628,47 @@ class TestDefaultValidationGate(unittest.TestCase):
         self.assertEqual(default_validate_comment(opt), "valid_optional")
         self.assertEqual(default_validate_comment(done), "invalid")
 
+    def test_plain_actionable_comment_escalates_not_optional(self):
+        # Stricter default stance: a substantive inline comment with no marker
+        # text must reach the PM validation gate (needs_user_judgment), not be
+        # silently downgraded to valid_optional and skipped.
+        for body in (
+            "please rename this variable to be clearer",
+            "consider extracting this block into a helper",
+            "this loop reallocates on every iteration",
+            "just a thought",
+        ):
+            with self.subTest(body=body):
+                c = ReviewComment(comment_id="1", body=body, source="inline")
+                self.assertEqual(
+                    default_validate_comment(c), "needs_user_judgment",
+                )
+
+    def test_only_explicit_optional_or_empty_is_optional(self):
+        # valid_optional from the runtime default is reserved for explicitly
+        # optional markers and bodyless reviews; nothing else short-circuits.
+        for body, expected in (
+            ("nit: rename this", "valid_optional"),
+            ("optional: tidy up later", "valid_optional"),
+            ("non-blocking suggestion", "valid_optional"),
+            ("", "valid_optional"),
+            ("guard context.mounted here", "needs_user_judgment"),
+        ):
+            with self.subTest(body=body):
+                c = ReviewComment(comment_id="1", body=body, source="inline")
+                self.assertEqual(default_validate_comment(c), expected)
+
+    def test_bot_plain_comment_still_escalates_never_auto_fix(self):
+        # Safety preserved: a bot/high-priority comment is still routed through
+        # validation, never auto-classified valid_must_fix by the runtime.
+        c = ReviewComment(
+            comment_id="9", body="guard context.mounted here", source="inline",
+            author="gemini-code-assist[bot]", author_type="Bot",
+        )
+        verdict = default_validate_comment(c)
+        self.assertEqual(verdict, "needs_user_judgment")
+        self.assertNotEqual(verdict, "valid_must_fix")
+
 
 class TestReviewCommentTriage(unittest.TestCase):
     def _c(self, body="please fix this", cid="111"):
@@ -1108,6 +1151,61 @@ class TestLiveValidationHandoff(unittest.TestCase):
                 self.assertNotIn("`python -m u_agents.mark_pr_open`", prompt)
 
 
+class TestStrictHandoffPromptPolicy(unittest.TestCase):
+    """Lock the stricter 'address unless clearly invalid' default stance in the
+    PM validation handoff prompt so it cannot silently revert to the old lax
+    'address only valid_must_fix' wording."""
+
+    def _prompt(self):
+        run = _run()
+        c = ReviewComment(
+            comment_id="111", body="guard context.mounted here",
+            source="inline", path="a.dart", line=7,
+        )
+        return build_validation_handoff_prompt(
+            run, _reality(review_comments=(c,)), [c.stable_key],
+        )
+
+    def test_default_stance_is_address(self):
+        prompt = self._prompt()
+        self.assertIn("DEFAULT STANCE", prompt)
+        self.assertIn(
+            "address every listed comment unless it is clearly invalid", prompt,
+        )
+
+    def test_uncertainty_is_not_a_reason_to_skip(self):
+        prompt = self._prompt().lower()
+        self.assertIn("not being fully certain", prompt)
+        self.assertIn(
+            "if you are unsure between valid_must_fix and valid_optional, "
+            "choose valid_must_fix",
+            prompt,
+        )
+
+    def test_optional_is_described_as_rare(self):
+        self.assertIn("RARE", self._prompt())
+
+    def test_invalid_is_constrained_to_clearly_wrong(self):
+        prompt = self._prompt().lower()
+        self.assertIn("factually wrong", prompt)
+        self.assertIn("contradicts", prompt)
+
+    def test_needs_user_judgment_is_product_decisions(self):
+        prompt = self._prompt().lower()
+        self.assertIn("needs_user_judgment", prompt)
+        self.assertIn("product/spec decision", prompt)
+
+    def test_does_not_use_old_lax_wording(self):
+        prompt = self._prompt().lower()
+        self.assertNotIn("address only valid_must_fix", prompt)
+        self.assertNotIn("only valid_must_fix comments", prompt)
+
+    def test_all_four_verdicts_documented(self):
+        prompt = self._prompt()
+        for verdict in REVIEW_VERDICTS:
+            self.assertIn(verdict, prompt)
+
+
 class TestPhraseSafeMarkers(unittest.TestCase):
     """Finding 2: forward-looking 'must be addressed' / 'should be resolved'
     phrasings must not be silently classified invalid/optional from a bare
@@ -1139,14 +1237,16 @@ class TestPhraseSafeMarkers(unittest.TestCase):
             with self.subTest(body=body):
                 self.assertEqual(default_validate_comment(self._c(body)), "invalid")
 
-    def test_must_fix_signal_survives_forward_resolved_phrasing(self):
-        from u_agents.pr_watcher import _body_has_must_fix_signal
+    def test_validation_candidate_survives_forward_resolved_phrasing(self):
+        from u_agents.pr_watcher import _body_is_validation_candidate
 
-        # A blocking comment that says it "should be resolved" is still a
-        # must-fix signal; a dismissive "already resolved" is not.
-        self.assertTrue(_body_has_must_fix_signal("blocking bug should be resolved"))
+        # A blocking comment that says it "should be resolved" is still routed
+        # to validation; a dismissive "already resolved" is suppressed.
+        self.assertTrue(
+            _body_is_validation_candidate("blocking bug should be resolved")
+        )
         self.assertFalse(
-            _body_has_must_fix_signal("this is blocking but already addressed")
+            _body_is_validation_candidate("this is blocking but already addressed")
         )
 
 

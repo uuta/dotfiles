@@ -2,7 +2,7 @@ import re
 import unittest
 from pathlib import Path
 
-from u_agents.control_plane import AGENT_RUN_PHASES
+from u_agents.control_plane import AGENT_RUN_STATUSES, RUN_PHASE_STATUSES
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,7 +29,7 @@ class TestAgentRunsSchema(unittest.TestCase):
             "github_issue_number",
             "parent_branch",
             "branch_name",
-            "phase",
+            "status",
             "runner_id",
             "machine_id",
             "locked_by",
@@ -37,8 +37,6 @@ class TestAgentRunsSchema(unittest.TestCase):
             "worktree_basename",
             "tmux_window",
             "pm_pane",
-            "engineer_pane",
-            "reviewer_pane",
             "review_result_relative_path",
             "pr_number",
             "pr_review_fix_rounds",
@@ -50,10 +48,37 @@ class TestAgentRunsSchema(unittest.TestCase):
             with self.subTest(column=column):
                 self.assertRegex(self.sql, rf"\b{column}\b")
 
-    def test_phase_check_matches_python_contract(self):
-        for phase in AGENT_RUN_PHASES:
-            with self.subTest(phase=phase):
-                self.assertIn(f"'{phase}'", self.sql)
+    def test_status_check_matches_python_contract(self):
+        for status in AGENT_RUN_STATUSES:
+            with self.subTest(status=status):
+                self.assertIn(f"'{status}'", self.sql)
+
+    def test_removed_unused_worker_pane_columns(self):
+        self.assertNotRegex(self.sql, r"\bengineer_pane\b")
+        self.assertNotRegex(self.sql, r"\breviewer_pane\b")
+
+    def test_run_phases_table_and_contract_exist(self):
+        self.assertIn("CREATE TABLE IF NOT EXISTS run_phases", self.sql)
+        for column in (
+            "run_phase_id",
+            "agent_run_id",
+            "phase_index",
+            "phase_key",
+            "title",
+            "status",
+            "metadata",
+            "block_reason",
+            "created_at",
+            "updated_at",
+        ):
+            with self.subTest(column=column):
+                self.assertRegex(self.sql, rf"\b{column}\b")
+        for status in RUN_PHASE_STATUSES:
+            with self.subTest(status=status):
+                self.assertIn(f"'{status}'", self.sql)
+        self.assertIn("UNIQUE (agent_run_id, phase_index)", self.sql)
+        self.assertIn("UNIQUE (agent_run_id, phase_key)", self.sql)
+        self.assertIn("run_phases_one_active_idx", self.sql)
 
     def test_constraints_cover_positive_numbers_and_non_empty_identity(self):
         self.assertIn("github_issue_number > 0", self.sql)
@@ -71,10 +96,10 @@ class TestAgentRunsSchema(unittest.TestCase):
             self.sql,
         )
 
-    def test_constraints_cover_lease_pair_and_pr_phase_integrity(self):
+    def test_constraints_cover_lease_pair_and_pr_status_integrity(self):
         self.assertIn("(locked_by IS NULL) = (lease_until IS NULL)", self.sql)
         self.assertIn(
-            "phase NOT IN ('pr_open', 'pr_watching', 'ready_to_merge')",
+            "status NOT IN ('pr_open', 'pr_watching', 'ready_to_merge')",
             self.sql,
         )
         self.assertIn("OR pr_number IS NOT NULL", self.sql)
@@ -95,10 +120,13 @@ class TestDbDocsContract(unittest.TestCase):
                 self.assertIn(name, self.readme)
         self.assertRegex(self.readme, r"must\s+not invent")
 
-    def test_docs_include_all_phase_values_and_transition_rules(self):
-        for phase in AGENT_RUN_PHASES:
-            with self.subTest(phase=phase):
-                self.assertIn(f"`{phase}`", self.readme)
+    def test_docs_include_all_status_values_and_transition_rules(self):
+        for status in AGENT_RUN_STATUSES:
+            with self.subTest(status=status):
+                self.assertIn(f"`{status}`", self.readme)
+        for status in RUN_PHASE_STATUSES:
+            with self.subTest(run_phase_status=status):
+                self.assertIn(f"`{status}`", self.readme)
         for text in (
             "GitHub Issues with `status:ready` remain the queue source of truth",
             "Only the Launcher creates or upserts the initial `agent_runs` row",
@@ -111,7 +139,9 @@ class TestDbDocsContract(unittest.TestCase):
             "Automated PR review comment fixes are allowed at most once",
             "pr_review_fix_rounds = 0",
             "pr_review_fix_rounds >= 1",
-            "phase = 'ready_to_merge'",
+            "status = 'ready_to_merge'",
+            "PM creates all rows in",
+            "`run_phases` once",
         ):
             with self.subTest(text=text):
                 self.assertIn(text, self.readme)

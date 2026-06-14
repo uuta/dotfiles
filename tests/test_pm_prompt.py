@@ -29,7 +29,7 @@ class TestPmPromptContent(unittest.TestCase):
         # Fix #2: opening a PR must durably advance agent_runs, not rely on
         # prompt memory.
         self.assertIn("u_agents.mark_pr_open", self.text)
-        self.assertIn("phase=pr_open", self.text)
+        self.assertIn("status=pr_open", self.text)
 
     def test_pr_open_command_uses_explicit_package_root_and_python(self):
         # The PM runs from the target repo worktree, which has no u_agents on

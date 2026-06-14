@@ -170,7 +170,7 @@ class TestAgentRunsClientWrites(unittest.TestCase):
             REVIEW_RESULT_RELATIVE_PATH,
         )
 
-    def test_update_phase_generates_expected_update_payload(self):
+    def test_update_phase_compat_generates_status_update_payload(self):
         conn = FakeConn([_row(phase="engineering", metadata={"stage": "pm"})])
         client = AgentRunsClient(conn, self.identity)
 
@@ -182,10 +182,11 @@ class TestAgentRunsClientWrites(unittest.TestCase):
         )
 
         self.assertEqual(run.phase, "engineering")
+        self.assertEqual(run.status, "engineering")
         sql, params = conn.calls[0]
         self.assertIn("UPDATE agent_runs", sql)
-        self.assertIn("SET phase = %(phase)s", sql)
-        self.assertEqual(params["phase"], "engineering")
+        self.assertIn("SET status = %(status)s", sql)
+        self.assertEqual(params["status"], "engineering")
         self.assertEqual(json.loads(params["metadata"]), {"stage": "pm"})
         self.assertFalse(params["clear_lease"])
 
@@ -203,7 +204,7 @@ class TestAgentRunsClientWrites(unittest.TestCase):
         self.assertEqual(run.phase, "pm_started")
         self.assertEqual(run.pm_pane, "agents:r-12.0")
         _sql, params = conn.calls[0]
-        self.assertEqual(params["phase"], "pm_started")
+        self.assertEqual(params["status"], "pm_started")
         self.assertEqual(params["tmux_window"], "r-12")
         self.assertEqual(params["pm_pane"], "agents:r-12.0")
 
@@ -224,7 +225,7 @@ class TestAgentRunsClientWrites(unittest.TestCase):
         self.assertEqual(run.pr_review_fix_rounds, 1)
         _sql, params = conn.calls[0]
         self.assertEqual(params["pr_number"], 45)
-        self.assertEqual(params["phase"], "fixing")
+        self.assertEqual(params["status"], "fixing")
         self.assertTrue(params["increment_fix_rounds"])
 
     def test_merge_metadata_only_updates_metadata(self):
@@ -246,7 +247,7 @@ class TestAgentRunsClientWrites(unittest.TestCase):
             {"slack_pr_open_notified": {"pr_number": 240}},
         )
 
-    def test_mark_pr_open_sets_pr_open_phase_and_number(self):
+    def test_mark_pr_open_sets_pr_open_status_and_number(self):
         conn = FakeConn([_row(phase="pr_open", pr_number=240)])
         client = AgentRunsClient(conn, self.identity)
 
@@ -255,7 +256,7 @@ class TestAgentRunsClientWrites(unittest.TestCase):
         self.assertEqual(run.phase, "pr_open")
         self.assertEqual(run.pr_number, 240)
         _sql, params = conn.calls[0]
-        self.assertEqual(params["phase"], "pr_open")
+        self.assertEqual(params["status"], "pr_open")
         self.assertEqual(params["pr_number"], 240)
         # PR-open bookkeeping must not consume a review fix round.
         self.assertFalse(params["increment_fix_rounds"])
@@ -280,13 +281,13 @@ class TestAgentRunsClientWrites(unittest.TestCase):
             {"source": "test", "pr_open": {"pr_number": 240}},
         )
 
-    def test_list_active_and_stale_runs_use_domain_phases(self):
+    def test_list_active_and_stale_runs_use_domain_statuses(self):
         active_conn = FakeConn([_row(phase="pm_started")])
         active_client = AgentRunsClient(active_conn, self.identity)
         self.assertEqual(active_client.list_active_runs()[0].phase, "pm_started")
         active_sql, active_params = active_conn.calls[0]
-        self.assertIn("phase = ANY(%(phases)s)", active_sql)
-        self.assertIn("pm_started", active_params["phases"])
+        self.assertIn("status = ANY(%(statuses)s)", active_sql)
+        self.assertIn("pm_started", active_params["statuses"])
 
         stale_conn = FakeConn([_row(phase="engineering")])
         stale_client = AgentRunsClient(stale_conn, self.identity)

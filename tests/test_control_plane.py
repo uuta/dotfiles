@@ -2,8 +2,9 @@ import unittest
 
 from u_agents.contract import ConfigError
 from u_agents.control_plane import (
-    AGENT_RUN_PHASES,
+    AGENT_RUN_STATUSES,
     PR_REVIEW_FIX_MAX_ROUNDS,
+    RUN_PHASE_STATUSES,
     database_url_from_env,
     decide_pr_watch_phase,
     load_runner_identity,
@@ -12,9 +13,9 @@ from u_agents.control_plane import (
 
 
 class TestControlPlaneConstants(unittest.TestCase):
-    def test_phase_values_are_exact(self):
+    def test_agent_run_status_values_are_exact(self):
         self.assertEqual(
-            AGENT_RUN_PHASES,
+            AGENT_RUN_STATUSES,
             (
                 "claimed",
                 "pm_started",
@@ -30,6 +31,20 @@ class TestControlPlaneConstants(unittest.TestCase):
             ),
         )
         self.assertEqual(PR_REVIEW_FIX_MAX_ROUNDS, 1)
+
+    def test_run_phase_status_values_are_exact(self):
+        self.assertEqual(
+            RUN_PHASE_STATUSES,
+            (
+                "pending",
+                "in_progress",
+                "reviewing",
+                "fixing",
+                "passed",
+                "blocked",
+                "cancelled",
+            ),
+        )
 
 
 class TestRunnerEnvironment(unittest.TestCase):
