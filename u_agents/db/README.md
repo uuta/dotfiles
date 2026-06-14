@@ -64,7 +64,7 @@ not invent placeholder identities.
 | `github_issue_number` | `integer` | Launcher | Claimed issue number. Must be positive. |
 | `parent_branch` | `text` | Launcher | Base branch for the PR, stored separately from `branch_name`. Must be non-empty and contain no whitespace. |
 | `branch_name` | `text` | Launcher | Working branch, normally `feat/<issue-number>`. Must be non-empty and contain no whitespace. |
-| `phase` | `text` | Runner/PM | Current coordination phase. See phase contract below. |
+| `status` | `text` | Runner/PM | Current run lifecycle status. See status contract below. |
 | `runner_id` | `text` | Runner | Configured runner identity that claimed or owns the row. |
 | `machine_id` | `text` | Runner | Configured machine identity for the row owner. |
 | `locked_by` | `text` | Runner | Current lease holder identity, usually `${runner_id}@${machine_id}`. Must be set and cleared together with `lease_until`. |
@@ -72,21 +72,59 @@ not invent placeholder identities.
 | `worktree_basename` | `text` | Launcher | Basename-only worktree directory, normally issue number as text. Must be non-empty, not `.` or `..`, contain no slash/backslash, and contain no whitespace. |
 | `tmux_window` | `text` | Launcher/PM | Deterministic tmux window name. |
 | `pm_pane` | `text` | Launcher/PM | PM pane target once known. |
-| `engineer_pane` | `text` | PM | Engineer pane target once created. |
-| `reviewer_pane` | `text` | PM | Reviewer pane target once created. |
 | `review_result_relative_path` | `text` | Launcher/PM | Portable review JSON path inside the issue worktree. Must be `tmp/review-result.json`; each machine derives the absolute local path from its worktree root at runtime. |
 | `pr_number` | `integer` | PM/runner | PR number after PR creation. Must be positive when set and is required for `pr_open`, `pr_watching`, and `ready_to_merge`. |
 | `pr_review_fix_rounds` | `integer` | PR watcher | Number of automated PR review fix loops used. Defaults to `0`. |
-| `block_reason` | `text` | Runner/PM | Required when `phase = 'blocked'`. |
+| `block_reason` | `text` | Runner/PM | Required when `status = 'blocked'`. |
 | `metadata` | `jsonb` | Runner/PM | Small structured observations. Must be a JSON object. |
 | `created_at` | `timestamptz` | DB default | Row creation time. |
 | `updated_at` | `timestamptz` | DB trigger | Last row update time. |
 
 `repository_full_name` and `github_issue_number` are unique together.
 
-## Phase contract
+## Issue-internal phase gates
 
-Allowed `phase` values are:
+`agent_runs.status` is the coarse runner workflow state. Do not add ad hoc
+status values for implementation checkpoints, and do not create a parallel
+Markdown/YAML state file for them.
+
+When a coarse issue has internal phase gates, PM creates all rows in
+`run_phases` once before implementation starts. Do not add new phases mid-run
+for the first version of this workflow.
+
+## Table: run_phases
+
+| Column | Type | Writer | Meaning |
+| ------ | ---- | ------ | ------- |
+| `run_phase_id` | `uuid` | DB default | Primary key for this phase gate row. |
+| `agent_run_id` | `uuid` | PM | Parent `agent_runs.run_id`; cascades on parent delete. |
+| `phase_index` | `integer` | PM | 1-based phase order inside this run. Unique per run. |
+| `phase_key` | `text` | PM | Stable machine-readable key for the phase. Unique per run. |
+| `title` | `text` | PM | Human-readable phase title from the issue contract. |
+| `status` | `text` | PM/runner | Phase gate status. Only one active phase per run may be `in_progress`, `reviewing`, or `fixing`. |
+| `metadata` | `jsonb` | PM/runner | Short summaries and pointers to evidence. Must be a JSON object. |
+| `block_reason` | `text` | PM/runner | Required when `status = 'blocked'`. |
+| `created_at` | `timestamptz` | DB default | Row creation time. |
+| `updated_at` | `timestamptz` | DB trigger | Last row update time. |
+
+Allowed `run_phases.status` values are:
+
+- `pending`
+- `in_progress`
+- `reviewing`
+- `fixing`
+- `passed`
+- `blocked`
+- `cancelled`
+
+Blackbox/runtime verification evidence should be stored as a short summary and
+a durable reference, for example issue/PR comments, CI logs, or
+`tmp/review-result.json`. Long command output, screenshots, and full review
+bodies belong outside the DB.
+
+## Status contract
+
+Allowed `agent_runs.status` values are:
 
 ```text
 claimed
@@ -102,7 +140,7 @@ done
 cancelled
 ```
 
-| Phase | Meaning | Writer | Verify before acting | Next action |
+| Status | Meaning | Writer | Verify before acting | Next action |
 | ----- | ------- | ------ | -------------------- | ----------- |
 | `claimed` | DB lease acquired for a `status:ready` issue. | Launcher | Issue still exists, is open, and has `status:ready`; no duplicate live tmux PM for this issue. | Swap GitHub label to `status:in-progress`, ensure PM tmux window, send PM prompt, then set `pm_started`. |
 | `pm_started` | PM tmux pane exists and prompt was sent. | Launcher | PM pane is a live expected agent process; worktree/branch reality matches row. | PM starts workspace setup and moves to `engineering`. |
@@ -121,25 +159,25 @@ cancelled
 Automated PR review comment fixes are allowed at most once, and only after a
 comment has been validated.
 
-1. If the PR is merged, set `phase = 'done'`.
+1. If the PR is merged, set `status = 'done'`.
 2. If there is a fresh validated must-fix comment and `pr_review_fix_rounds = 0`,
-   set `phase = 'fixing'`, increment `pr_review_fix_rounds`, mark that comment
+   set `status = 'fixing'`, increment `pr_review_fix_rounds`, mark that comment
    attempted, and assign the engineer the must-fix list.
 3. If a validated must-fix comment was already attempted once but is still
-   present, set `phase = 'blocked'` (it cannot be auto-fixed again and must not
+   present, set `status = 'blocked'` (it cannot be auto-fixed again and must not
    be ignored).
 4. If any collected comment is classified `needs_user_judgment`:
    - in the production `pr_watcher` CLI path, fresh keys are handed to the
      existing PM pane for validation, marked `handed_off`, and parked in
-     `phase = 'fixing'` until the PM re-arms the watcher with `mark_pr_open`;
+     `status = 'fixing'` until the PM re-arms the watcher with `mark_pr_open`;
    - with no live dispatcher, or if the same ambiguous key is already
-     `handed_off`, set `phase = 'blocked'` so a human decides (no repeat
+     `handed_off`, set `status = 'blocked'` so a human decides (no repeat
      auto-handoff).
 5. If there is a fresh validated must-fix comment and
-   `pr_review_fix_rounds >= 1`, set `phase = 'blocked'` (global round cap).
+   `pr_review_fix_rounds >= 1`, set `status = 'blocked'` (global round cap).
 6. If CI is green and there are no actionable/unresolved/judgment comments, set
-   `phase = 'ready_to_merge'`.
-7. Otherwise remain in `phase = 'pr_watching'`.
+   `status = 'ready_to_merge'`.
+7. Otherwise remain in `status = 'pr_watching'`.
 
 The watcher collects both top-level PR comments / review summaries and inline
 review comments (`/repos/{owner}/{repo}/pulls/{n}/comments`). If the inline
@@ -153,6 +191,25 @@ it can become a must-fix input; none auto-trigger a fix. Verdicts are
 `valid_optional`, `invalid`, and `needs_user_judgment`. Marker text, a
 `CHANGES_REQUESTED` summary, high-priority styling, or bot authorship alone
 never make a comment `valid_must_fix`.
+
+The default stance is to validate and address, not to skip. The runtime
+`default_validate_comment` classifier drops a comment without PM review only
+when it is clearly obsolete/dismissed (`invalid`) or explicitly optional/empty
+(`valid_optional`); any other comment with a body — including a plain inline
+comment with no marker text — is escalated to `needs_user_judgment` so it
+reaches the PM validation gate instead of being silently treated as optional.
+At that gate the PM (or another injected validator) must address a comment
+unless it is clearly invalid:
+
+- `invalid` only when the comment is factually wrong, contradicts the
+  issue/spec, would break behavior, is already obsolete, or is impossible to
+  apply with a concrete reason.
+- `valid_optional` is rare: only explicitly optional/non-blocking/nit comments,
+  or purely cosmetic comments out of the current scope.
+- `needs_user_judgment` only for product/spec decisions, scope changes, or
+  ambiguous tradeoffs the implementation agent cannot decide.
+- When unsure between `valid_must_fix` and `valid_optional`, choose
+  `valid_must_fix`. Not being fully certain is not a reason to skip a comment.
 
 ### Per-comment at-most-once bookkeeping
 

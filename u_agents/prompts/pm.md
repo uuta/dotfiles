@@ -128,7 +128,7 @@ watchdog recovery path apply. Do not open a PR from pane output alone.
      fails, comment on the issue with the blocker and stop; the run remains
      in `pm_started` and the PR watcher will not pick it up until this
      command succeeds.
-     This advances the `agent_runs` row to `phase=pr_open` with `pr_number`
+     This advances the `agent_runs` row to `status=pr_open` with `pr_number`
      set. The PR watcher only picks up rows in `pr_open`/`pr_watching`/
      `ready_to_merge` that have a `pr_number`, so skipping this strands the run.
 

@@ -1,7 +1,7 @@
 """Optional Slack webhook notification for the PR-open transition.
 
 This is a best-effort side-channel on top of the durable ``agent_runs``
-transition. The DB row reaching ``phase = 'pr_open'`` with ``pr_number`` set
+transition. The DB row reaching ``status = 'pr_open'`` with ``pr_number`` set
 (via :meth:`AgentRunsClient.mark_pr_open`) remains the source of truth and the
 PR-watcher hand-off; Slack delivery never gates it:
 

@@ -1,7 +1,7 @@
 """Pure v0.2 control-plane contract helpers.
 
 This module intentionally avoids opening a database connection. It keeps
-runner identity validation and phase-transition decisions unit-testable while
+runner identity validation and status-transition decisions unit-testable while
 the SQL schema remains the source of truth for persisted state.
 """
 from __future__ import annotations
@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from u_agents.contract import ConfigError
 
 
-AGENT_RUN_PHASES = (
+AGENT_RUN_STATUSES = (
     "claimed",
     "pm_started",
     "engineering",
@@ -25,6 +25,18 @@ AGENT_RUN_PHASES = (
     "ready_to_merge",
     "blocked",
     "done",
+    "cancelled",
+)
+
+AGENT_RUN_PHASES = AGENT_RUN_STATUSES
+
+RUN_PHASE_STATUSES = (
+    "pending",
+    "in_progress",
+    "reviewing",
+    "fixing",
+    "passed",
+    "blocked",
     "cancelled",
 )
 

@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     github_issue_number integer NOT NULL,
     parent_branch text NOT NULL,
     branch_name text NOT NULL,
-    phase text NOT NULL DEFAULT 'claimed',
+    status text NOT NULL DEFAULT 'claimed',
     runner_id text NOT NULL,
     machine_id text NOT NULL,
     locked_by text,
@@ -14,8 +14,6 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     worktree_basename text NOT NULL,
     tmux_window text NOT NULL,
     pm_pane text,
-    engineer_pane text,
-    reviewer_pane text,
     review_result_relative_path text NOT NULL DEFAULT 'tmp/review-result.json',
     pr_number integer,
     pr_review_fix_rounds integer NOT NULL DEFAULT 0,
@@ -32,8 +30,8 @@ CREATE TABLE IF NOT EXISTS agent_runs (
         CHECK (btrim(parent_branch) <> '' AND parent_branch !~ '[[:space:]]'),
     CONSTRAINT agent_runs_branch_name_check
         CHECK (btrim(branch_name) <> '' AND branch_name !~ '[[:space:]]'),
-    CONSTRAINT agent_runs_phase_check
-        CHECK (phase IN (
+    CONSTRAINT agent_runs_status_check
+        CHECK (status IN (
             'claimed',
             'pm_started',
             'engineering',
@@ -65,17 +63,13 @@ CREATE TABLE IF NOT EXISTS agent_runs (
         CHECK (btrim(tmux_window) <> ''),
     CONSTRAINT agent_runs_pm_pane_check
         CHECK (pm_pane IS NULL OR btrim(pm_pane) <> ''),
-    CONSTRAINT agent_runs_engineer_pane_check
-        CHECK (engineer_pane IS NULL OR btrim(engineer_pane) <> ''),
-    CONSTRAINT agent_runs_reviewer_pane_check
-        CHECK (reviewer_pane IS NULL OR btrim(reviewer_pane) <> ''),
     CONSTRAINT agent_runs_review_result_relative_path_check
         CHECK (review_result_relative_path = 'tmp/review-result.json'),
     CONSTRAINT agent_runs_pr_number_check
         CHECK (pr_number IS NULL OR pr_number > 0),
-    CONSTRAINT agent_runs_pr_phase_number_check
+    CONSTRAINT agent_runs_pr_status_number_check
         CHECK (
-            phase NOT IN ('pr_open', 'pr_watching', 'ready_to_merge')
+            status NOT IN ('pr_open', 'pr_watching', 'ready_to_merge')
             OR pr_number IS NOT NULL
         ),
     CONSTRAINT agent_runs_pr_review_fix_rounds_check
@@ -84,16 +78,64 @@ CREATE TABLE IF NOT EXISTS agent_runs (
         CHECK (jsonb_typeof(metadata) = 'object'),
     CONSTRAINT agent_runs_block_reason_check
         CHECK (
-            (phase <> 'blocked' AND (block_reason IS NULL OR btrim(block_reason) <> ''))
-            OR (phase = 'blocked' AND block_reason IS NOT NULL AND btrim(block_reason) <> '')
+            (status <> 'blocked' AND (block_reason IS NULL OR btrim(block_reason) <> ''))
+            OR (status = 'blocked' AND block_reason IS NOT NULL AND btrim(block_reason) <> '')
         )
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS agent_runs_repository_issue_key
     ON agent_runs (repository_full_name, github_issue_number);
 
-CREATE INDEX IF NOT EXISTS agent_runs_phase_lease_idx
-    ON agent_runs (phase, lease_until);
+CREATE INDEX IF NOT EXISTS agent_runs_status_lease_idx
+    ON agent_runs (status, lease_until);
+
+CREATE TABLE IF NOT EXISTS run_phases (
+    run_phase_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    agent_run_id uuid NOT NULL REFERENCES agent_runs(run_id) ON DELETE CASCADE,
+    phase_index integer NOT NULL,
+    phase_key text NOT NULL,
+    title text NOT NULL,
+    status text NOT NULL DEFAULT 'pending',
+    metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+    block_reason text,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+
+    CONSTRAINT run_phases_phase_index_check
+        CHECK (phase_index > 0),
+    CONSTRAINT run_phases_phase_key_check
+        CHECK (btrim(phase_key) <> ''),
+    CONSTRAINT run_phases_title_check
+        CHECK (btrim(title) <> ''),
+    CONSTRAINT run_phases_status_check
+        CHECK (status IN (
+            'pending',
+            'in_progress',
+            'reviewing',
+            'fixing',
+            'passed',
+            'blocked',
+            'cancelled'
+        )),
+    CONSTRAINT run_phases_metadata_object_check
+        CHECK (jsonb_typeof(metadata) = 'object'),
+    CONSTRAINT run_phases_block_reason_check
+        CHECK (
+            (status <> 'blocked' AND (block_reason IS NULL OR btrim(block_reason) <> ''))
+            OR (status = 'blocked' AND block_reason IS NOT NULL AND btrim(block_reason) <> '')
+        ),
+    CONSTRAINT run_phases_agent_run_phase_index_key
+        UNIQUE (agent_run_id, phase_index),
+    CONSTRAINT run_phases_agent_run_phase_key_key
+        UNIQUE (agent_run_id, phase_key)
+);
+
+CREATE INDEX IF NOT EXISTS run_phases_agent_run_status_idx
+    ON run_phases (agent_run_id, status);
+
+CREATE UNIQUE INDEX IF NOT EXISTS run_phases_one_active_idx
+    ON run_phases (agent_run_id)
+    WHERE status IN ('in_progress', 'reviewing', 'fixing');
 
 CREATE INDEX IF NOT EXISTS agent_runs_runner_machine_idx
     ON agent_runs (runner_id, machine_id);
@@ -112,5 +154,12 @@ DROP TRIGGER IF EXISTS agent_runs_set_updated_at ON agent_runs;
 
 CREATE TRIGGER agent_runs_set_updated_at
 BEFORE UPDATE ON agent_runs
+FOR EACH ROW
+EXECUTE FUNCTION set_agent_runs_updated_at();
+
+DROP TRIGGER IF EXISTS run_phases_set_updated_at ON run_phases;
+
+CREATE TRIGGER run_phases_set_updated_at
+BEFORE UPDATE ON run_phases
 FOR EACH ROW
 EXECUTE FUNCTION set_agent_runs_updated_at();

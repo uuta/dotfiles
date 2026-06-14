@@ -2,7 +2,7 @@
 """CLI to durably record an opened PR in ``agent_runs``.
 
 After the PM (or any automation) opens a PR for an issue, the ``agent_runs``
-row must be advanced to ``phase = 'pr_open'`` with ``pr_number`` set so the PR
+row must be advanced to ``status = 'pr_open'`` with ``pr_number`` set so the PR
 watcher picks it up. The PM runs this from its tmux pane instead of relying on
 prompt memory. PM panes normally run the rendered command from
 ``u_agents/prompts/pm.md`` so the package root and psycopg-enabled Python
@@ -44,7 +44,7 @@ def record_pr_open(
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(
         description=(
-            "Record an opened PR in agent_runs (phase=pr_open, pr_number set) "
+            "Record an opened PR in agent_runs (status=pr_open, pr_number set) "
             "so the PR watcher can take over."
         )
     )
@@ -64,7 +64,7 @@ def main(argv=None) -> int:
         db_client.close()
     print(
         f"{run.repository_full_name}#{run.github_issue_number}: "
-        f"phase={run.phase} pr={run.pr_number}",
+        f"status={run.status} pr={run.pr_number}",
         file=sys.stderr,
     )
     return 0

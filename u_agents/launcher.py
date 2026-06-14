@@ -81,7 +81,7 @@ class DryRunAgentRunsClient:
         print(
             "DRY: would acquire agent_runs claim lease for "
             f"{payload.repository_full_name}#{payload.github_issue_number} "
-            f"(phase={payload.phase}, locked_by={payload.locked_by}, "
+            f"(status={payload.status}, locked_by={payload.locked_by}, "
             f"lease_until={payload.lease_until.isoformat()}, "
             f"worktree_basename={payload.worktree_basename}, "
             f"tmux_window={payload.tmux_window})",
@@ -103,7 +103,7 @@ class DryRunAgentRunsClient:
 
     def mark_pm_started(self, run: AgentRun) -> AgentRun:
         print(
-            "DRY: would update agent_runs phase to 'pm_started' for "
+            "DRY: would update agent_runs status to 'pm_started' for "
             f"{run.repository_full_name}#{run.github_issue_number} "
             f"with pm_pane={pm_pane_target(run.tmux_window)}",
             file=sys.stderr,
@@ -693,7 +693,7 @@ def dispatch_claim(issue: Issue, args) -> int:
     """Full claim flow with partial-claim rollback.
 
     Order: DB claim/lease -> GitHub re-check -> label swap -> tmux PM prompt
-    -> phase=pm_started. If anything after the swap raises, attempt to revert
+    -> status=pm_started. If anything after the swap raises, attempt to revert
     the label so the issue re-enters the queue. The resume sweep recovers it
     next run if the rollback itself fails.
     """

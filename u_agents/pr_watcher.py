@@ -156,21 +156,16 @@ def _comment_key(prefix: str, item: dict, fallback_index: int) -> str:
     return f"{prefix}:index-{fallback_index}"
 
 
-def _body_has_must_fix_signal(body: str) -> bool:
-    normalized = body.lower().replace("_", "-")
-    if not any(marker in normalized for marker in _MUST_FIX_MARKERS):
-        return False
-    return not any(marker in normalized for marker in _NON_MUST_FIX_MARKERS)
-
-
 def _body_is_validation_candidate(body: str) -> bool:
     """Whether a top-level comment/review body should be routed to validation.
 
-    Broader than ``_body_has_must_fix_signal``: it also catches forward-looking,
-    actionable phrasings ("this must be addressed before merge", "blocking bug
-    should be resolved") so they become ``ReviewComment`` objects and reach the
-    validation gate instead of being silently ignored on the way to
-    ready_to_merge. Dismissive/optional bodies are still suppressed.
+    A body is a candidate when it carries a must-fix marker
+    (``_MUST_FIX_MARKERS``) or a forward-looking, actionable phrasing
+    (``_FORWARD_ACTION_MARKERS`` -- e.g. "this must be addressed before merge",
+    "blocking bug should be resolved"), so it becomes a ``ReviewComment`` object
+    and reaches the validation gate instead of being silently ignored on the way
+    to ready_to_merge. Dismissive/optional bodies (``_NON_MUST_FIX_MARKERS``)
+    are suppressed and take precedence over any must-fix/forward-action token.
     """
     normalized = body.lower().replace("_", "-")
     if any(marker in normalized for marker in _NON_MUST_FIX_MARKERS):
@@ -246,8 +241,17 @@ def default_validate_comment(comment: ReviewComment) -> str:
     the runtime watcher must not auto-fix based on marker text, a
     ``CHANGES_REQUESTED`` review summary, high-priority styling, or bot
     authorship alone. A real ``valid_must_fix`` verdict comes from an explicit
-    validator (an agent) injected by the caller. Anything that looks actionable
-    but cannot be confirmed here is escalated as ``needs_user_judgment``.
+    validator (an agent / the PM) injected by the caller.
+
+    The default stance is to validate, not to skip. Only two kinds of comment
+    are dropped here without reaching the PM: ones that are clearly
+    obsolete/dismissed (``invalid``) and ones that are explicitly optional or
+    have no body (``valid_optional``). Everything else with a body -- including
+    a plain inline comment that carries no marker text -- is escalated as
+    ``needs_user_judgment`` so it reaches the PM validation gate instead of
+    being silently downgraded to optional and ignored. The PM then applies the
+    stricter "address unless clearly invalid" policy (see
+    ``build_validation_handoff_prompt``).
     """
     state = (comment.state or "").upper()
     if state == "CHANGES_REQUESTED":
@@ -260,20 +264,16 @@ def default_validate_comment(comment: ReviewComment) -> str:
         return "valid_optional"
     normalized = body.lower().replace("_", "-")
     if any(marker in normalized for marker in _INVALID_MARKERS):
+        # Clearly obsolete / dismissed (already addressed, outdated, wontfix...).
         return "invalid"
     if any(marker in normalized for marker in _OPTIONAL_MARKERS):
+        # Explicitly optional / non-blocking / nit.
         return "valid_optional"
-    if (comment.author_type or "").lower() == "bot":
-        # Bot review comments (e.g. gemini-code-assist high-priority notes) are
-        # surfaced for human/agent validation, never auto-fixed from styling.
-        return "needs_user_judgment"
-    if _body_has_must_fix_signal(comment.body) or any(
-        marker in normalized for marker in _FORWARD_ACTION_MARKERS
-    ):
-        # Actionable but unconfirmed (e.g. "this must be addressed before
-        # merge"): escalate rather than silently downgrading to optional.
-        return "needs_user_judgment"
-    return "valid_optional"
+    # Anything else with a body is actionable but unconfirmed: route it to the
+    # PM validation gate rather than auto-fixing (bot/marker/forward-action
+    # text) or silently treating it as optional (plain comments). Not being
+    # certain is not a reason to skip a comment.
+    return "needs_user_judgment"
 
 
 @dataclass(frozen=True)
@@ -697,7 +697,7 @@ def reconcile_pr_run(
             run.repository_full_name,
             run.github_issue_number,
             pr_number=reality.pr_number,
-            phase=decision.phase,
+            status=decision.phase,
             increment_fix_rounds=decision.increment_fix_rounds,
             metadata=metadata,
         )
@@ -745,14 +745,14 @@ def reconcile_pr_run(
                 ]
                 # Park the run out of the watch set while the PM validates/fixes.
                 # The handoff prompt instructs the PM to re-arm via mark_pr_open
-                # (phase -> pr_open) when done, so the watcher re-checks; if the
+                # (status -> pr_open) when done, so the watcher re-checks; if the
                 # same keys are still ambiguous then, they will have handed_off
                 # set and escalate below instead of looping.
                 return db_client.update_pr_fields(
                     run.repository_full_name,
                     run.github_issue_number,
                     pr_number=reality.pr_number,
-                    phase="fixing",
+                    status="fixing",
                     metadata=metadata,
                 )
             # Delivery failed: keep watching and retry next pass (handed_off
@@ -761,7 +761,7 @@ def reconcile_pr_run(
                 run.repository_full_name,
                 run.github_issue_number,
                 pr_number=reality.pr_number,
-                phase="pr_watching",
+                status="pr_watching",
                 metadata=metadata,
             )
         reason = (
@@ -787,7 +787,7 @@ def reconcile_pr_run(
         run.repository_full_name,
         run.github_issue_number,
         pr_number=reality.pr_number,
-        phase=decision.phase,
+        status=decision.phase,
         increment_fix_rounds=decision.increment_fix_rounds,
         metadata=metadata,
     )
@@ -847,8 +847,8 @@ def check_once(
 #
 # Duplicate handoffs are prevented by the per-comment ``handed_off`` flag in
 # ``pr_review_comments`` bookkeeping: only keys without it are dispatched, and a
-# successful delivery parks the run in ``phase='fixing'`` so it leaves the watch
-# set until the PM re-arms it via ``mark_pr_open`` (phase -> ``pr_open``). The
+# successful delivery parks the run in ``status='fixing'`` so it leaves the watch
+# set until the PM re-arms it via ``mark_pr_open`` (status -> ``pr_open``). The
 # same key, if still ambiguous on re-entry, escalates to a human instead of
 # being re-sent.
 
@@ -913,27 +913,46 @@ def build_validation_handoff_prompt(
         "u-agents PR watcher handoff: validate PR review comments for "
         f"{run.repository_full_name}#{run.github_issue_number} "
         f"(PR #{reality.pr_number}).\n\n"
-        "These review comments are NOT pre-approved. Validate each before "
-        "changing any code:\n\n"
+        "These review comments are NOT pre-approved, but your DEFAULT STANCE is "
+        "to ADDRESS them. Validate each before changing any code; only skip a "
+        "comment when it is clearly invalid, explicitly optional, or a "
+        "product/spec decision you cannot make:\n\n"
         f"{listing}\n\n"
         "Rules:\n"
-        "1. Validate each listed comment first; a comment is not automatically "
-        "correct.\n"
-        "2. Classify each as valid_must_fix, valid_optional, invalid, or "
-        "needs_user_judgment.\n"
-        "3. Do NOT change code for invalid or optional comments.\n"
-        "4. Address only valid_must_fix comments. Address each comment (by its "
+        "1. Default stance: address every listed comment unless it is clearly "
+        "invalid. A comment being inconvenient, or you not being fully certain, "
+        "is NOT a reason to skip it.\n"
+        "2. Validate each listed comment first (a comment is not automatically "
+        "correct), then classify it by its [id:hash] key as exactly one of:\n"
+        "   - valid_must_fix: the DEFAULT verdict for anything actionable that "
+        "is not clearly invalid, explicitly optional, or a product/spec "
+        "decision.\n"
+        "   - valid_optional: RARE. Only comments explicitly marked "
+        "optional / non-blocking / nit, or whose value is purely cosmetic AND "
+        "out of the current scope.\n"
+        "   - invalid: ONLY when the comment is factually wrong, contradicts "
+        "the issue/spec, would break behavior, is already obsolete/addressed, "
+        "or is impossible to apply (give the concrete reason).\n"
+        "   - needs_user_judgment: ONLY for product/spec decisions, scope "
+        "changes, or genuine tradeoffs you cannot decide as the implementation "
+        "agent.\n"
+        "3. If you are unsure between valid_must_fix and valid_optional, choose "
+        "valid_must_fix. Do not downgrade a real comment to optional to avoid "
+        "work.\n"
+        "4. Do NOT change code for invalid, valid_optional, or "
+        "needs_user_judgment comments.\n"
+        "5. Address every valid_must_fix comment. Address each comment (by its "
         "[id:hash] key above) at most once; if you already addressed that exact "
         "key in a previous round, do not redo it.\n"
-        "5. Record your verdict for each key in your PR/issue report "
-        "(key -> verdict + one-line reason).\n"
-        "6. After addressing valid_must_fix comments and pushing, re-arm the "
+        "6. Record your verdict for each key in your PR/issue report "
+        "(key -> verdict + one-line reason). For invalid / valid_optional / "
+        "needs_user_judgment the reason must justify NOT fixing it.\n"
+        "7. After addressing valid_must_fix comments and pushing, re-arm the "
         "watcher by running exactly this full command; do not replace it with "
         "a bare interpreter invocation:\n"
         f"       {rearm}\n"
-        "7. If a comment is genuinely ambiguous, leave it as "
-        "needs_user_judgment and comment on the issue asking the user; do not "
-        "guess.\n"
+        "8. For needs_user_judgment comments, comment on the issue asking the "
+        "user; do not guess and do not silently skip.\n"
     )
 
 
@@ -1012,7 +1031,7 @@ def main(argv=None) -> int:
         for run in updated:
             print(
                 f"{run.repository_full_name}#{run.github_issue_number}: "
-                f"phase={run.phase} pr={run.pr_number}",
+                f"status={run.status} pr={run.pr_number}",
                 file=sys.stderr,
             )
         if args.once:

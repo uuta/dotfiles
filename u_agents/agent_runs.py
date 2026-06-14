@@ -15,7 +15,7 @@ from u_agents.contract import (
     tmux_window_name,
 )
 from u_agents.control_plane import (
-    AGENT_RUN_PHASES,
+    AGENT_RUN_STATUSES,
     RunnerIdentity,
     database_url_from_env,
     load_runner_identity,
@@ -24,7 +24,7 @@ from u_agents.control_plane import (
 )
 
 
-ACTIVE_PHASES = (
+ACTIVE_STATUSES = (
     "claimed",
     "pm_started",
     "engineering",
@@ -34,7 +34,11 @@ ACTIVE_PHASES = (
     "pr_watching",
     "ready_to_merge",
 )
-TERMINAL_PHASES = ("blocked", "done", "cancelled")
+TERMINAL_STATUSES = ("blocked", "done", "cancelled")
+
+# Compatibility aliases while the DB contract moves from `phase` to `status`.
+ACTIVE_PHASES = ACTIVE_STATUSES
+TERMINAL_PHASES = TERMINAL_STATUSES
 
 _REPOSITORY_RE = re.compile(r"^[^/\s]+/[^/\s]+$")
 
@@ -58,14 +62,19 @@ class AgentRun:
     block_reason: str | None = None
     metadata: Mapping[str, Any] | None = None
 
+    @property
+    def status(self) -> str:
+        return self.phase
+
     @classmethod
     def from_row(cls, row: Mapping[str, Any]) -> "AgentRun":
+        phase_or_status = row.get("phase", row.get("status"))
         return cls(
             repository_full_name=str(row["repository_full_name"]),
             github_issue_number=int(row["github_issue_number"]),
             parent_branch=str(row["parent_branch"]),
             branch_name=str(row["branch_name"]),
-            phase=str(row["phase"]),
+            phase=str(phase_or_status),
             runner_id=str(row["runner_id"]),
             machine_id=str(row["machine_id"]),
             locked_by=row.get("locked_by"),
@@ -95,6 +104,10 @@ class ClaimPayload:
     review_result_relative_path: str = REVIEW_RESULT_RELATIVE_PATH
     phase: str = "claimed"
 
+    @property
+    def status(self) -> str:
+        return self.phase
+
 
 def validate_repository_full_name(value: str) -> str:
     if not isinstance(value, str) or not _REPOSITORY_RE.match(value):
@@ -122,10 +135,24 @@ def validate_runner_identity_field(value: str, field: str) -> str:
     return value
 
 
-def validate_phase(value: str) -> str:
-    if value not in AGENT_RUN_PHASES:
-        raise ValueError(f"phase must be one of: {', '.join(AGENT_RUN_PHASES)}")
+def validate_status(value: str) -> str:
+    if value not in AGENT_RUN_STATUSES:
+        raise ValueError(f"status must be one of: {', '.join(AGENT_RUN_STATUSES)}")
     return value
+
+
+def validate_phase(value: str) -> str:
+    return validate_status(value)
+
+
+def _resolve_status(status: str | None, phase: str | None = None) -> str:
+    if phase is not None:
+        if status is not None and status != phase:
+            raise ValueError("status and phase aliases must match when both are set")
+        status = phase
+    if status is None:
+        raise ValueError("status is required")
+    return validate_status(status)
 
 
 def validate_metadata(metadata: Mapping[str, Any] | None) -> Mapping[str, Any]:
@@ -170,7 +197,7 @@ def build_claim_payload(
 def _row_columns() -> str:
     return (
         "repository_full_name, github_issue_number, parent_branch, branch_name, "
-        "phase, runner_id, machine_id, locked_by, lease_until, "
+        "status AS phase, runner_id, machine_id, locked_by, lease_until, "
         "worktree_basename, tmux_window, pm_pane, pr_number, "
         "pr_review_fix_rounds, block_reason, metadata"
     )
@@ -205,12 +232,12 @@ class AgentRunsClient:
         sql = f"""
             INSERT INTO agent_runs (
                 repository_full_name, github_issue_number, parent_branch,
-                branch_name, phase, runner_id, machine_id, locked_by,
+                branch_name, status, runner_id, machine_id, locked_by,
                 lease_until, worktree_basename, tmux_window,
                 review_result_relative_path, metadata
             ) VALUES (
                 %(repository_full_name)s, %(github_issue_number)s,
-                %(parent_branch)s, %(branch_name)s, %(phase)s,
+                %(parent_branch)s, %(branch_name)s, %(status)s,
                 %(runner_id)s, %(machine_id)s, %(locked_by)s,
                 %(lease_until)s, %(worktree_basename)s, %(tmux_window)s,
                 %(review_result_relative_path)s, '{{}}'::jsonb
@@ -218,7 +245,7 @@ class AgentRunsClient:
             ON CONFLICT (repository_full_name, github_issue_number) DO UPDATE
             SET parent_branch = EXCLUDED.parent_branch,
                 branch_name = EXCLUDED.branch_name,
-                phase = 'claimed',
+                status = 'claimed',
                 runner_id = EXCLUDED.runner_id,
                 machine_id = EXCLUDED.machine_id,
                 locked_by = EXCLUDED.locked_by,
@@ -232,10 +259,10 @@ class AgentRunsClient:
             WHERE agent_runs.lease_until IS NULL
                OR agent_runs.lease_until < now()
                OR agent_runs.locked_by = EXCLUDED.locked_by
-               OR agent_runs.phase IN ('blocked', 'done', 'cancelled')
+               OR agent_runs.status IN ('blocked', 'done', 'cancelled')
             RETURNING {_row_columns()}
         """
-        row = self._fetch_one(sql, payload.__dict__)
+        row = self._fetch_one(sql, {**payload.__dict__, "status": payload.status})
         if row is None:
             raise RuntimeError(
                 "agent_runs claim lease is held by another runner for "
@@ -243,11 +270,11 @@ class AgentRunsClient:
             )
         return AgentRun.from_row(row)
 
-    def update_phase(
+    def update_status(
         self,
         repository_full_name: str,
         github_issue_number: int,
-        phase: str,
+        status: str,
         *,
         metadata: Mapping[str, Any] | None = None,
         block_reason: str | None = None,
@@ -255,13 +282,13 @@ class AgentRunsClient:
     ) -> AgentRun:
         validate_repository_full_name(repository_full_name)
         validate_issue_number(github_issue_number)
-        validate_phase(phase)
+        validate_status(status)
         validate_metadata(metadata)
-        if phase == "blocked" and (block_reason is None or block_reason.strip() == ""):
-            raise ValueError("block_reason is required when phase is blocked")
+        if status == "blocked" and (block_reason is None or block_reason.strip() == ""):
+            raise ValueError("block_reason is required when status is blocked")
         sql = f"""
             UPDATE agent_runs
-            SET phase = %(phase)s,
+            SET status = %(status)s,
                 block_reason = %(block_reason)s,
                 locked_by = CASE WHEN %(clear_lease)s THEN NULL ELSE locked_by END,
                 lease_until = CASE WHEN %(clear_lease)s THEN NULL ELSE lease_until END,
@@ -273,11 +300,30 @@ class AgentRunsClient:
         return self._require_row(sql, {
             "repository_full_name": repository_full_name,
             "github_issue_number": github_issue_number,
-            "phase": phase,
+            "status": status,
             "block_reason": block_reason,
             "clear_lease": clear_lease,
             "metadata": json.dumps(dict(metadata or {})),
         })
+
+    def update_phase(
+        self,
+        repository_full_name: str,
+        github_issue_number: int,
+        phase: str,
+        *,
+        metadata: Mapping[str, Any] | None = None,
+        block_reason: str | None = None,
+        clear_lease: bool = False,
+    ) -> AgentRun:
+        return self.update_status(
+            repository_full_name,
+            github_issue_number,
+            phase,
+            metadata=metadata,
+            block_reason=block_reason,
+            clear_lease=clear_lease,
+        )
 
     def update_tmux_coordinates(
         self,
@@ -286,17 +332,18 @@ class AgentRunsClient:
         *,
         tmux_window: str,
         pm_pane: str | None,
-        phase: str = "pm_started",
+        status: str = "pm_started",
+        phase: str | None = None,
     ) -> AgentRun:
         validate_repository_full_name(repository_full_name)
         validate_issue_number(github_issue_number)
         validate_nonempty_nowhitespace(tmux_window, "tmux_window")
         if pm_pane is not None:
             validate_nonempty_nowhitespace(pm_pane, "pm_pane")
-        validate_phase(phase)
+        status = _resolve_status(status, phase)
         sql = f"""
             UPDATE agent_runs
-            SET phase = %(phase)s,
+            SET status = %(status)s,
                 tmux_window = %(tmux_window)s,
                 pm_pane = %(pm_pane)s
             WHERE repository_full_name = %(repository_full_name)s
@@ -306,7 +353,7 @@ class AgentRunsClient:
         return self._require_row(sql, {
             "repository_full_name": repository_full_name,
             "github_issue_number": github_issue_number,
-            "phase": phase,
+            "status": status,
             "tmux_window": tmux_window,
             "pm_pane": pm_pane,
         })
@@ -317,7 +364,7 @@ class AgentRunsClient:
             run.github_issue_number,
             tmux_window=run.tmux_window,
             pm_pane=pm_pane_target(run.tmux_window),
-            phase="pm_started",
+            status="pm_started",
         )
 
     def update_pr_fields(
@@ -326,6 +373,7 @@ class AgentRunsClient:
         github_issue_number: int,
         *,
         pr_number: int | None = None,
+        status: str | None = None,
         phase: str | None = None,
         increment_fix_rounds: bool = False,
         block_reason: str | None = None,
@@ -335,15 +383,18 @@ class AgentRunsClient:
         validate_issue_number(github_issue_number)
         if pr_number is not None and pr_number <= 0:
             raise ValueError("pr_number must be positive when set")
-        if phase is not None:
-            validate_phase(phase)
+        status = (
+            _resolve_status(status, phase)
+            if status is not None or phase is not None
+            else None
+        )
         validate_metadata(metadata)
-        if phase == "blocked" and (block_reason is None or block_reason.strip() == ""):
-            raise ValueError("block_reason is required when phase is blocked")
+        if status == "blocked" and (block_reason is None or block_reason.strip() == ""):
+            raise ValueError("block_reason is required when status is blocked")
         sql = f"""
             UPDATE agent_runs
             SET pr_number = COALESCE(%(pr_number)s, pr_number),
-                phase = COALESCE(%(phase)s, phase),
+                status = COALESCE(%(status)s, status),
                 pr_review_fix_rounds = pr_review_fix_rounds
                     + CASE WHEN %(increment_fix_rounds)s THEN 1 ELSE 0 END,
                 block_reason = %(block_reason)s,
@@ -356,7 +407,7 @@ class AgentRunsClient:
             "repository_full_name": repository_full_name,
             "github_issue_number": github_issue_number,
             "pr_number": pr_number,
-            "phase": phase,
+            "status": status,
             "increment_fix_rounds": increment_fix_rounds,
             "block_reason": block_reason,
             "metadata": json.dumps(dict(metadata or {})),
@@ -394,8 +445,8 @@ class AgentRunsClient:
     ) -> AgentRun:
         """Durably record that a PR was opened for this run.
 
-        Sets ``phase = 'pr_open'`` and ``pr_number`` so the PR watcher's
-        ``list_pr_watch_runs`` query (phase in pr_open/pr_watching/ready_to_merge
+        Sets ``status = 'pr_open'`` and ``pr_number`` so the PR watcher's
+        ``list_pr_watch_runs`` query (status in pr_open/pr_watching/ready_to_merge
         AND pr_number IS NOT NULL) picks the run up. This is the persisted
         hand-off from PM/automation to the PR watcher; it must not rely on PM
         prompt memory alone.
@@ -406,7 +457,7 @@ class AgentRunsClient:
             repository_full_name,
             github_issue_number,
             pr_number=pr_number,
-            phase="pr_open",
+            status="pr_open",
             metadata=observation,
         )
 
@@ -416,10 +467,10 @@ class AgentRunsClient:
         github_issue_number: int,
         observation: Mapping[str, Any],
     ) -> AgentRun:
-        return self.update_phase(
+        return self.update_status(
             repository_full_name,
             github_issue_number,
-            phase=self.get_run(repository_full_name, github_issue_number).phase,
+            status=self.get_run(repository_full_name, github_issue_number).status,
             metadata={"observations": dict(observation)},
         )
 
@@ -488,27 +539,33 @@ class AgentRunsClient:
         sql = f"""
             SELECT {_row_columns()}
             FROM agent_runs
-            WHERE phase = ANY(%(phases)s)
+            WHERE status = ANY(%(statuses)s)
             ORDER BY updated_at ASC
         """
-        return [AgentRun.from_row(r) for r in self._fetch_all(sql, {"phases": list(ACTIVE_PHASES)})]
+        return [
+            AgentRun.from_row(r)
+            for r in self._fetch_all(sql, {"statuses": list(ACTIVE_STATUSES)})
+        ]
 
     def list_stale_runs(self) -> list[AgentRun]:
         sql = f"""
             SELECT {_row_columns()}
             FROM agent_runs
-            WHERE phase = ANY(%(phases)s)
+            WHERE status = ANY(%(statuses)s)
               AND lease_until IS NOT NULL
               AND lease_until < now()
             ORDER BY lease_until ASC
         """
-        return [AgentRun.from_row(r) for r in self._fetch_all(sql, {"phases": list(ACTIVE_PHASES)})]
+        return [
+            AgentRun.from_row(r)
+            for r in self._fetch_all(sql, {"statuses": list(ACTIVE_STATUSES)})
+        ]
 
     def list_pr_watch_runs(self) -> list[AgentRun]:
         sql = f"""
             SELECT {_row_columns()}
             FROM agent_runs
-            WHERE phase IN ('pr_open', 'pr_watching', 'ready_to_merge')
+            WHERE status IN ('pr_open', 'pr_watching', 'ready_to_merge')
               AND pr_number IS NOT NULL
             ORDER BY updated_at ASC
         """
@@ -524,7 +581,7 @@ class AgentRunsClient:
         validate_nonempty_nowhitespace(payload.locked_by, "locked_by")
         validate_worktree_basename(payload.worktree_basename)
         validate_nonempty_nowhitespace(payload.tmux_window, "tmux_window")
-        validate_phase(payload.phase)
+        validate_status(payload.status)
         if payload.review_result_relative_path != REVIEW_RESULT_RELATIVE_PATH:
             raise ValueError(
                 "review_result_relative_path must be tmp/review-result.json"

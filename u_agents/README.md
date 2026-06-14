@@ -3,6 +3,9 @@
 v0.2 DB-backed local agent runner. See [`docs/u-agents.md`](../docs/u-agents.md) for the
 full design, configuration, and command reference.
 
+Agent-local instructions live in [`AGENTS.md`](AGENTS.md). Read that file
+before changing workflow state handling or task granularity rules.
+
 Layout:
 
 - `contract.py` — config + naming primitives.
@@ -10,8 +13,8 @@ Layout:
 - `agent_runs.py` — PostgreSQL `agent_runs` runtime access layer.
 - `launcher.py` — short-lived starter/resumer (`python3 -m u_agents.launcher`).
 - `watchdog.py` — stall detector (`python3 -m u_agents.watchdog`).
-- `pr_watcher.py` — DB-backed PR phase watcher (`python3 -m u_agents.pr_watcher`).
-- `mark_pr_open.py` — PM-run CLI to record an opened PR (`phase=pr_open`, `pr_number`).
+- `pr_watcher.py` — DB-backed PR status watcher (`python3 -m u_agents.pr_watcher`).
+- `mark_pr_open.py` — PM-run CLI to record an opened PR (`status=pr_open`, `pr_number`).
 - `slack_notify.py` — optional, best-effort Slack PR-open webhook (`U_AGENTS_SLACK_WEBHOOK_URL`).
 - `prompts/pm.md` — PM prompt template sent into the tmux PM pane.
 - `compose.yml` — local PostgreSQL 17 for v0.2 control-plane development.
