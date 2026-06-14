@@ -1,6 +1,6 @@
 ---
 name: claude-tmux-pm
-description: tmux 上の Claude Code セッションに GitHub の sub-issue を順番に割り当てるスキル。親 Issue 配下の sub-issue を番号順に見て、最初の未対応タスクが `S` ラベルなら `feat/{issue_number}` ブランチの専用 worktree（basename は issue number）で Claude Code に実装させる。workspace / worktree の配置規約は `agent-workspace` に従う。Claude は実装と検証まで行い、Codex が diff review してから commit / push / PR を行う。最初の未対応タスクが `M` または `L` の場合は通常は割り当てず、先に対応方針をユーザーと相談する。ただしユーザーが特定 issue について明示的に override した場合は、その issue に限って割り当ててよい。各実行の冒頭では、merge 済み PR に対応する専用 pane / window / worktree を安全に掃除する。「Claude Code に割り当てて」「tmux の Claude に投げて」「agent に issue を振って」などで使用。
+description: tmux 上の Claude Code セッションに GitHub の sub-issue を順番に割り当てるスキル。親 Issue 配下の sub-issue を番号順に見て、明示的な implementation contract / Done when / Not done if / blackbox verification を持つ ready issue を `feat/{issue_number}` ブランチの専用 worktree（basename は issue number）で Claude Code に実装させる。workspace / worktree の配置規約は `agent-workspace` に従う。Claude は実装と検証まで行い、Codex が phase gate や diff review を挟んでから commit / push / PR を行う。L または contract 不足の issue は通常割り当てず、先にユーザーと詰める。「Claude Code に割り当てて」「tmux の Claude に投げて」「agent に issue を振って」などで使用。
 allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 ---
 
@@ -10,10 +10,10 @@ allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 
 - workspace / worktree layout は `agent-workspace` の規約に従う
 - worktree 作成/再利用後、対象 repo に `docs/env-paths.txt` がある場合は、Claude に渡す前に `worktree-env` の manifest copy/check を必ず実行する
-- `S` ラベルの task だけを Claude Code に割り当てる
-- `M` / `L` は通常は割り当てない。ユーザーが特定 issue 番号を明示して override した場合だけ例外的に割り当ててよい
+- `S` または contract-ready な `M` task を Claude Code に割り当ててよい。サイズより implementation contract と verification gate を優先する
+- `L` は通常は割り当てない。ユーザーが特定 issue 番号を明示して override した場合だけ例外的に割り当ててよい
 - sub-issue は必ず番号の小さい順に扱う
-- 先頭の未対応 task が `M` または `L` なら、後ろの `S` を飛ばして割り当ててはいけない
+- 先頭の未対応 task が割り当て不可なら、後ろの `S` を飛ばして割り当ててはいけない
 - ブランチ名は必ず `feat/{issue_number}` を使う
 - 1 agent につき 1 task だけを担当させる
 - Claude Code は必ず `--dangerously-skip-permissions` を付けて起動する
@@ -24,6 +24,7 @@ allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 - issue 予約は pane title だけでなく window 名にも残す
 - 実装 issue を Claude に渡す前に、sub-issue 側に明示的な implementation contract があることを確認する
 - 初回 assignment prompt には scope だけでなく `Done when` / `Not done if` / `Hard blockers` を必ず含める。runtime acceptance や external config が絡む issue を「コードと docs は入った」で完了扱いにさせてはいけない
+- issue が phase gate を持つ場合、phase は別 issue ではなく review checkpoint として扱う。Claude には phase ごとの blackbox/runtime verification と「各 phase 完了時に止まって報告する」指示を含める
 - issue 本文やコメントで仕様が明確になった場合、Claude に渡す前にその内容を sub-issue に反映する。会話中の口頭合意だけで渡してはいけない
 - routing / UX flow / API contract を変える issue は特に厳格に扱う。既存 flow を置き換えるのか、追加するだけなのかが issue に書かれていなければ割り当ててはいけない
 - frontend route / island / hydration 変更では、実装後の verification に `build` と bundle 警告確認を含める。test/lint だけで完了扱いにしてはいけない
@@ -161,10 +162,11 @@ git worktree remove <worktree_path>
 対象 issue の size label を確認する。
 
 - `S`: 割り当て可
-- `M` / `L`: 割り当て禁止。ここで止めてユーザーに相談する
+- `M`: implementation contract と phase gate / blackbox verification が明確なら割り当て可。不足していれば止めてユーザーに相談する
+- `L`: 原則割り当て禁止。ここで止めてユーザーに相談する
 - ただし、ユーザーが「#<issue_number> をそのまま Claude に割り当ててよい」と明示した場合のみ、その issue に限って override 可
 
-このルールは厳守する。先頭 issue が `M` / `L` のとき、後続の `S` に進めてはいけない。override がある場合でも、その指定 issue 以外には適用しない。
+このルールは厳守する。先頭 issue が割り当て不可のとき、後続の `S` に進めてはいけない。override がある場合でも、その指定 issue 以外には適用しない。
 
 ### 2.5 実装 contract を確認する
 
