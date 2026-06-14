@@ -36,6 +36,7 @@ import sys
 from u_agents.agent_runs import (
     AgentRunsClient,
     ReviewCommentRecord,
+    validate_comment_key,
     validate_pm_decision,
     validate_review_comment_resolution,
     validate_verification_refs,
@@ -125,6 +126,7 @@ def main(argv=None) -> int:
     # Validate cross-field rules before opening a DB connection so an invalid
     # request fails fast with a clear CLI error (exit 2), not a DB round-trip.
     try:
+        validate_comment_key(args.comment_key)
         validate_pm_decision(args.pm_decision)
         validate_verification_refs(args.verification_refs)
         validate_review_comment_resolution(

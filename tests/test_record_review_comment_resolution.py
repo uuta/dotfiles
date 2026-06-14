@@ -152,6 +152,23 @@ class TestMain(unittest.TestCase):
                 with self.assertRaises(SystemExit):
                     main(argv)
 
+    def test_invalid_comment_key_format_rejected_before_db_connection(self):
+        # A comment key missing the 'github_comment_id:body_hash' colon shape is
+        # rejected by the pre-DB validation block (exit 2) before from_env runs.
+        with mock.patch(
+            "u_agents.record_review_comment_resolution.AgentRunsClient.from_env",
+            side_effect=AssertionError("must not connect on invalid comment key"),
+        ), redirect_stderr(io.StringIO()):
+            for bad_key in ("nocolon", ":abc", "1:", "  :  "):
+                with self.subTest(bad_key=bad_key):
+                    with self.assertRaises(SystemExit):
+                        main([
+                            "--repo", "o/r", "--issue", "41",
+                            "--comment-key", bad_key,
+                            "--resolution-status", "rejected",
+                            "--verification-summary", "reason",
+                        ])
+
     def test_unknown_resolution_status_is_rejected_by_argparse(self):
         with self.assertRaises(SystemExit):
             main([

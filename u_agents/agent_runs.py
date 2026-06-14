@@ -242,6 +242,15 @@ def validate_body_hash(value: str) -> str:
 def validate_comment_key(value: str) -> str:
     if not isinstance(value, str) or value.strip() == "":
         raise ValueError("comment_key must be a non-empty string")
+    # comment_key is the ``github_comment_id:body_hash`` generated column. The
+    # id part may be a signed 64-bit integer (synthetic review signals use
+    # deterministic signed ids), so only enforce the colon-delimited shape with
+    # non-empty parts rather than the exact id/hash formats.
+    head, sep, tail = value.partition(":")
+    if not sep or head.strip() == "" or tail.strip() == "":
+        raise ValueError(
+            "comment_key must be 'github_comment_id:body_hash' with non-empty parts"
+        )
     return value
 
 
@@ -286,7 +295,12 @@ def validate_verification_refs(refs: Any) -> list:
         return []
     if not isinstance(refs, (list, tuple)):
         raise ValueError("verification_refs must be a JSON array (list)")
-    json.dumps(list(refs))
+    try:
+        json.dumps(list(refs))
+    except TypeError as e:
+        raise ValueError(
+            "verification_refs elements must be JSON-serializable"
+        ) from e
     return list(refs)
 
 

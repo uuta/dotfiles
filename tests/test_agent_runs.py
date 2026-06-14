@@ -7,6 +7,8 @@ from u_agents.agent_runs import (
     ClaimPayload,
     ReviewCommentRecord,
     build_claim_payload,
+    validate_comment_key,
+    validate_verification_refs,
 )
 from u_agents.contract import REVIEW_RESULT_RELATIVE_PATH, RepoConfig
 from u_agents.control_plane import RunnerIdentity
@@ -70,6 +72,24 @@ class FakeConn:
 
     def commit(self):
         self.commits += 1
+
+
+class TestReviewCommentValidators(unittest.TestCase):
+    def test_comment_key_requires_colon_and_non_empty_parts(self):
+        for bad in ("", "   ", "nocolon", ":abc", "1:", "  :  "):
+            with self.subTest(bad=bad):
+                with self.assertRaises(ValueError):
+                    validate_comment_key(bad)
+
+    def test_comment_key_accepts_signed_id_and_hash(self):
+        # Synthetic review signals use deterministic signed ids; keep them valid.
+        for good in ("3409641728:1cf66a90f911", "-123:deadbeef", "1:abc"):
+            with self.subTest(good=good):
+                self.assertEqual(validate_comment_key(good), good)
+
+    def test_verification_refs_non_serializable_raises_value_error(self):
+        with self.assertRaises(ValueError):
+            validate_verification_refs([object()])
 
 
 class TestClaimPayload(unittest.TestCase):
