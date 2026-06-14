@@ -8,6 +8,7 @@ background-blur-radius = 20
 macos-titlebar-style = transparent
 font-size = 16
 font-family = Go-Mono Nerd Font Mono
+clipboard-write = allow
 keybind = ctrl+shift+h=goto_split:left
 keybind = ctrl+shift+l=goto_split:right
 keybind = ctrl+shift+j=goto_split:bottom

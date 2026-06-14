@@ -341,6 +341,16 @@ source "$HOME/.openai_key.zsh"
 # so shells without the local file are unaffected. See docs/u-agents.md.
 [[ -f "$HOME/.u_agents_env.zsh" ]] && source "$HOME/.u_agents_env.zsh"
 
+# u-agents expects each workspace to expose a main checkout at
+# ${workspace_root}/${default_branch}. Keep the existing resorn checkout in
+# place and provide that shape through a managed symlink.
+if [ -e "$HOME/resorn/.git" ]; then
+    mkdir -p "$HOME/resorn-workspace/.worktrees"
+    if [ -L "$HOME/resorn-workspace/main" ] || [ ! -e "$HOME/resorn-workspace/main" ]; then
+        ln -sfn "$HOME/resorn" "$HOME/resorn-workspace/main"
+    fi
+fi
+
 # Embulk
 export PATH="$HOME/.embulk/bin:$PATH"
 
