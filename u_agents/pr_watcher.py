@@ -8,24 +8,32 @@ import json
 import shlex
 import subprocess
 import sys
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 from u_agents.agent_runs import AgentRun, AgentRunsClient
 from u_agents.contract import pm_pane_target
-from u_agents.control_plane import decide_pr_watch_phase
+from u_agents.control_plane import REVIEW_COMMENT_VERDICTS, decide_pr_watch_phase
 
 
 # Verdicts produced by the validation gate. Only ``valid_must_fix`` is eligible
 # for an automated fix attempt, and only once per stable comment identity.
-REVIEW_VERDICTS = (
-    "valid_must_fix",
-    "valid_optional",
-    "invalid",
-    "needs_user_judgment",
-)
+REVIEW_VERDICTS = REVIEW_COMMENT_VERDICTS
+
+# Maps a watcher ``ReviewComment.source`` to the ``review_comments.source`` enum
+# (see u_agents/db/003_review_comments.sql). Anything unknown is persisted as
+# ``unknown`` rather than dropped.
+_DB_SOURCE = {
+    "inline": "inline_review",
+    "comment": "top_level",
+    "latest_review": "review_body",
+    "review_decision": "unknown",
+}
+
+
+def db_source(source: str) -> str:
+    return _DB_SOURCE.get(source, "unknown")
 
 
 @dataclass(frozen=True)
@@ -36,6 +44,9 @@ class ReviewComment:
     (top-level PR comment), or ``latest_review`` (a review summary). The stable
     key is the GitHub comment id plus a body hash, so a re-posted identical
     comment maps to the same key while an edited body becomes a new candidate.
+    The key matches the ``review_comments.comment_key`` generated column, so the
+    watcher, the PM hand-off prompt, and the PM CLI all reference the same
+    identity.
     """
 
     comment_id: str
@@ -48,12 +59,30 @@ class ReviewComment:
     state: str = ""
 
     @property
+    def github_comment_id(self) -> int:
+        """Stable signed-64-bit comment id for the durable table.
+
+        Inline review comments expose a numeric GitHub REST id directly. The
+        synthetic top-level / review-summary / reviewDecision keys are not
+        numeric, so derive a deterministic signed 64-bit id from the key string
+        (``review_comments.github_comment_id`` is ``int8``). Identical comment
+        ids map to identical derived ids across passes.
+        """
+        try:
+            return int(self.comment_id)
+        except (TypeError, ValueError):
+            digest = hashlib.sha256(
+                str(self.comment_id).encode("utf-8", "replace")
+            ).digest()
+            return int.from_bytes(digest[:8], "big", signed=True)
+
+    @property
     def body_hash(self) -> str:
         return hashlib.sha256(self.body.encode("utf-8", "replace")).hexdigest()
 
     @property
     def stable_key(self) -> str:
-        return f"{self.comment_id}:{self.body_hash[:12]}"
+        return f"{self.github_comment_id}:{self.body_hash[:12]}"
 
 
 @dataclass(frozen=True)
@@ -274,87 +303,6 @@ def default_validate_comment(comment: ReviewComment) -> str:
     # text) or silently treating it as optional (plain comments). Not being
     # certain is not a reason to skip a comment.
     return "needs_user_judgment"
-
-
-@dataclass(frozen=True)
-class CommentTriage:
-    bookkeeping: dict
-    actionable_keys: list
-    needs_judgment_keys: list
-    # valid_must_fix comments still present this pass that were already attempted
-    # once: not auto-fixed again, but not silently ignored either.
-    unresolved_keys: list = field(default_factory=list)
-    invalid_keys: list = field(default_factory=list)
-    optional_keys: list = field(default_factory=list)
-
-
-def triage_review_comments(
-    comments,
-    prior_bookkeeping,
-    validate: Callable[[ReviewComment], str] = default_validate_comment,
-) -> CommentTriage:
-    """Run review comments through the validation gate with at-most-once memory.
-
-    ``prior_bookkeeping`` is the persisted per-comment state keyed by
-    ``ReviewComment.stable_key`` (id + body hash). A ``valid_must_fix`` comment
-    is only ``actionable`` if it has not already been attempted under the same
-    key; if it was attempted and is still present it is reported as
-    ``unresolved`` instead (do not auto-fix again, but do not ignore it). An
-    edited body produces a new key, so it is treated as a fresh candidate.
-
-    Prior bookkeeping is merged forward, not replaced: a pass that sees an
-    empty or partial comment list must not drop previously recorded
-    verdict/attempted state, or the at-most-once guarantee would weaken.
-    """
-    if not isinstance(prior_bookkeeping, Mapping):
-        prior_bookkeeping = {}
-    # Start from prior state so historical (esp. attempted) keys survive even
-    # when the current fetch returns fewer/no comments.
-    bookkeeping: dict = {
-        k: dict(v) for k, v in prior_bookkeeping.items() if isinstance(v, Mapping)
-    }
-    actionable: list = []
-    needs_judgment: list = []
-    unresolved: list = []
-    invalid_keys: list = []
-    optional_keys: list = []
-    for comment in comments:
-        key = comment.stable_key
-        verdict = validate(comment)
-        if verdict not in REVIEW_VERDICTS:
-            verdict = "needs_user_judgment"
-        prior = prior_bookkeeping.get(key)
-        attempted = bool(prior.get("attempted")) if isinstance(prior, Mapping) else False
-        handed_off = bool(prior.get("handed_off")) if isinstance(prior, Mapping) else False
-        bookkeeping[key] = {
-            "verdict": verdict,
-            "attempted": attempted,
-            "handed_off": handed_off,
-            "comment_id": comment.comment_id,
-            "body_hash": comment.body_hash[:12],
-            "source": comment.source,
-            "path": comment.path,
-            "line": comment.line,
-        }
-        if verdict == "valid_must_fix":
-            if attempted:
-                unresolved.append(key)
-            else:
-                actionable.append(key)
-        elif verdict == "needs_user_judgment":
-            needs_judgment.append(key)
-        elif verdict == "invalid":
-            invalid_keys.append(key)
-        elif verdict == "valid_optional":
-            optional_keys.append(key)
-    return CommentTriage(
-        bookkeeping=bookkeeping,
-        actionable_keys=actionable,
-        needs_judgment_keys=needs_judgment,
-        unresolved_keys=unresolved,
-        invalid_keys=invalid_keys,
-        optional_keys=optional_keys,
-    )
 
 
 # "could not resolve to" matches GitHub GraphQL missing-resource errors
@@ -590,7 +538,7 @@ def reconcile_pr_run(
     reality: PrReality,
     db_client,
     *,
-    assign_fix: Callable[[AgentRun, PrReality], None] | None = None,
+    assign_fix: Callable[[AgentRun, PrReality, list], None] | None = None,
     dispatch_handoff: Callable[[AgentRun, PrReality, list], bool] | None = None,
     validate_comment: Callable[[ReviewComment], str] = default_validate_comment,
 ) -> AgentRun:
@@ -631,31 +579,56 @@ def reconcile_pr_run(
             metadata={"pr_watcher": {"verified": True, "closed": True}},
         )
 
-    prior_bookkeeping = {}
-    if isinstance(run.metadata, Mapping):
-        prior_bookkeeping = run.metadata.get("pr_review_comments") or {}
-    triage = triage_review_comments(
-        reality.review_comments, prior_bookkeeping, validate_comment,
-    )
+    # Merged wins over all review-comment handling.
+    if reality.merged:
+        return db_client.mark_done(
+            run.repository_full_name,
+            run.github_issue_number,
+            metadata={"pr_watcher": {"verified": True, "merged": True}},
+        )
 
-    # Only validated must-fix comments that have not yet been auto-fixed are
-    # eligible to trigger a fix. The legacy reality.must_fix_review_comments
-    # signal no longer drives fixing directly: those raw comments are routed
-    # through the validation gate as ReviewComment objects instead.
-    must_fix = bool(triage.actionable_keys)
-    decision = decide_pr_watch_phase(
-        pr_merged=reality.merged,
-        ci_green=reality.ci_green,
-        must_fix_review_comments=must_fix,
-        pr_review_fix_rounds=run.pr_review_fix_rounds,
-    )
+    # Upsert every detected comment so the table reflects what the watcher saw
+    # this pass. ``upsert_review_comment`` preserves the PM-owned resolution
+    # columns and refreshes only what the watcher observes.
+    repo = run.repository_full_name
+    issue = run.github_issue_number
+    for comment in reality.review_comments:
+        verdict = validate_comment(comment)
+        if verdict not in REVIEW_VERDICTS:
+            verdict = "needs_user_judgment"
+        db_client.upsert_review_comment(
+            repo,
+            issue,
+            github_comment_id=comment.github_comment_id,
+            body_hash=comment.body_hash[:12],
+            pr_number=reality.pr_number,
+            source=db_source(comment.source),
+            watcher_verdict=verdict,
+            original_body=comment.body or None,
+            original_path=comment.path,
+            original_line=comment.line,
+        )
 
-    # Mark the fresh actionable comments as attempted only when this pass is
-    # actually going to assign a fix round, so each comment id+hash is auto-
-    # fixed at most once across passes.
-    if decision.increment_fix_rounds:
-        for key in triage.actionable_keys:
-            triage.bookkeeping[key]["attempted"] = True
+    # Decide from the DURABLE table state, not only this pass's fetch. A comment
+    # handed off on a prior pass that the PM never resolved must keep blocking
+    # even when a later (possibly partial / transient) GitHub fetch returns
+    # fewer or no comments -- the table, not ``metadata.pr_review_comments`` and
+    # not the current fetch, is the source of truth. A PM resolution
+    # (addressed/rejected) recorded in the table likewise survives across passes,
+    # so a re-armed PR is no longer re-blocked on a comment the PM handled.
+    durable = [
+        r for r in db_client.list_review_comments(repo, issue)
+        if r.pr_number == reality.pr_number
+    ]
+
+    # Partition by durable resolution state. addressed/rejected never block;
+    # unresolved comments are actionable only by their watcher_verdict.
+    escalated = [r for r in durable if r.resolution_status == "needs_user_judgment"]
+    unresolved = [r for r in durable if r.resolution_status == "unresolved"]
+    must_fix_unresolved = [r for r in unresolved if r.watcher_verdict == "valid_must_fix"]
+    judgment_unresolved = [r for r in unresolved if r.watcher_verdict == "needs_user_judgment"]
+    judgment_fresh = [r for r in judgment_unresolved if r.handed_off_at is None]
+    judgment_stale = [r for r in judgment_unresolved if r.handed_off_at is not None]
 
     metadata = {
         "pr_watcher": {
@@ -663,132 +636,118 @@ def reconcile_pr_run(
             "pr_number": reality.pr_number,
             "head_branch": reality.head_branch,
             "ci_green": reality.ci_green,
-            "must_fix_review_comments": reality.must_fix_review_comments,
-            "must_fix_review_comment_count": len(reality.must_fix_comment_keys),
-            "must_fix_comment_keys": list(reality.must_fix_comment_keys[:20]),
             "merged": reality.merged,
             "closed": reality.closed,
-            "review_comment_triage": {
-                "actionable": list(triage.actionable_keys),
-                "unresolved": list(triage.unresolved_keys),
-                "needs_user_judgment": list(triage.needs_judgment_keys),
-                "invalid": list(triage.invalid_keys),
-                "valid_optional": list(triage.optional_keys),
+            "review_comments": {
+                "total": len(durable),
+                "must_fix_unresolved": [r.comment_key for r in must_fix_unresolved],
+                "needs_user_judgment_unresolved": [
+                    r.comment_key for r in judgment_unresolved
+                ],
+                "escalated_to_user": [r.comment_key for r in escalated],
                 "handed_off": [
-                    k for k in triage.needs_judgment_keys
-                    if triage.bookkeeping.get(k, {}).get("handed_off")
+                    r.comment_key for r in durable if r.handed_off_at is not None
+                ],
+                "addressed": [
+                    r.comment_key for r in durable
+                    if r.resolution_status == "addressed"
+                ],
+                "rejected": [
+                    r.comment_key for r in durable
+                    if r.resolution_status == "rejected"
                 ],
             },
         },
-        "pr_review_comments": triage.bookkeeping,
     }
 
-    # Merged wins over everything else.
-    if decision.phase == "done":
-        return db_client.mark_done(
-            run.repository_full_name,
-            run.github_issue_number,
-            metadata=metadata,
-        )
+    decision = decide_pr_watch_phase(
+        pr_merged=False,
+        ci_green=reality.ci_green,
+        must_fix_review_comments=bool(must_fix_unresolved),
+        pr_review_fix_rounds=run.pr_review_fix_rounds,
+    )
 
-    # A fresh validated must-fix with budget left: assign exactly one fix round.
-    if decision.phase == "fixing":
+    # 1. A fresh validated must-fix with fix budget: assign exactly one fix round
+    #    for the must-fix keys only. needs_user_judgment / optional / invalid
+    #    comments present in the same fetch are NOT swept into the fix prompt;
+    #    they keep their own (handoff / block / non-blocking) paths.
+    if must_fix_unresolved and decision.phase == "fixing":
+        must_fix_keys = [r.comment_key for r in must_fix_unresolved]
         updated = db_client.update_pr_fields(
-            run.repository_full_name,
-            run.github_issue_number,
+            repo,
+            issue,
             pr_number=reality.pr_number,
-            status=decision.phase,
+            status="fixing",
             increment_fix_rounds=decision.increment_fix_rounds,
             metadata=metadata,
         )
         if assign_fix is not None:
-            assign_fix(updated, reality)
+            assign_fix(updated, reality, must_fix_keys)
         return updated
 
-    # Not fixing this pass. A validated must-fix that was already attempted but
-    # is still present must NOT slip through to ready_to_merge: it cannot be
-    # auto-fixed again, so escalate to a human.
-    if triage.unresolved_keys:
+    # 2. A validated must-fix still unresolved after the one allowed auto-fix
+    #    round: it cannot be auto-fixed again and must not slip to ready_to_merge.
+    if must_fix_unresolved and decision.phase == "blocked":
         reason = (
             "valid must-fix PR review comments remain after the automated fix "
-            "attempt: " + ", ".join(triage.unresolved_keys[:20])
+            "attempt: " + ", ".join(r.comment_key for r in must_fix_unresolved[:20])
         )
-        return db_client.mark_blocked(
-            run.repository_full_name,
-            run.github_issue_number,
-            reason,
-            metadata=metadata,
-        )
+        return db_client.mark_blocked(repo, issue, reason, metadata=metadata)
 
-    # Comments needing a human/agent decision. With a live ``dispatch_handoff``
-    # the watcher hands the *fresh* (not-yet-dispatched) keys to the existing PM
-    # pane for validation+fix instead of dead-ending. Keys already handed off
-    # but still ambiguous escalate to a human rather than being re-sent every
-    # tick. Without a dispatcher (the conservative default / unit tests) this
-    # still blocks for user judgment.
-    if triage.needs_judgment_keys:
-        fresh = [
-            k for k in triage.needs_judgment_keys
-            if not triage.bookkeeping.get(k, {}).get("handed_off")
-        ]
-        if fresh and dispatch_handoff is not None:
-            # Deliver the validation prompt first; only persist the handoff if
-            # delivery succeeded so a transient tmux failure is retried next
-            # tick rather than silently consuming the one-shot handoff.
-            delivered = dispatch_handoff(run, reality, fresh)
+    # 3. PM explicitly escalated a comment to a human, or a comment was handed
+    #    off but the PM re-armed the watcher without recording a resolution.
+    #    Either way a human must decide; do not re-handoff in a loop.
+    blocking_keys = [r.comment_key for r in (escalated + judgment_stale)]
+    if blocking_keys:
+        reason = (
+            "PR review comments need user judgment before automated handling: "
+            + ", ".join(blocking_keys[:20])
+        )
+        return db_client.mark_blocked(repo, issue, reason, metadata=metadata)
+
+    # 4. Fresh needs_user_judgment comments: hand them to the existing PM pane
+    #    once. A successful delivery stamps handed_off_at and parks the run in
+    #    'fixing' until the PM records a resolution and re-arms via mark_pr_open;
+    #    the same key, if still unresolved on re-entry, escalates at step 3.
+    if judgment_fresh:
+        fresh_keys = [r.comment_key for r in judgment_fresh]
+        if dispatch_handoff is not None:
+            delivered = dispatch_handoff(run, reality, fresh_keys)
             if delivered:
-                for key in fresh:
-                    triage.bookkeeping[key]["handed_off"] = True
-                metadata["pr_watcher"]["review_comment_triage"]["handed_off"] = [
-                    k for k in triage.needs_judgment_keys
-                    if triage.bookkeeping.get(k, {}).get("handed_off")
-                ]
-                # Park the run out of the watch set while the PM validates/fixes.
-                # The handoff prompt instructs the PM to re-arm via mark_pr_open
-                # (status -> pr_open) when done, so the watcher re-checks; if the
-                # same keys are still ambiguous then, they will have handed_off
-                # set and escalate below instead of looping.
+                for r in judgment_fresh:
+                    db_client.mark_review_comment_handed_off(repo, issue, r.comment_key)
+                metadata["pr_watcher"]["review_comments"]["handed_off"] = sorted(
+                    set(metadata["pr_watcher"]["review_comments"]["handed_off"])
+                    | set(fresh_keys)
+                )
                 return db_client.update_pr_fields(
-                    run.repository_full_name,
-                    run.github_issue_number,
+                    repo,
+                    issue,
                     pr_number=reality.pr_number,
                     status="fixing",
                     metadata=metadata,
                 )
-            # Delivery failed: keep watching and retry next pass (handed_off
+            # Delivery failed: keep watching and retry next pass (handed_off_at
             # stays unset for these keys).
             return db_client.update_pr_fields(
-                run.repository_full_name,
-                run.github_issue_number,
+                repo,
+                issue,
                 pr_number=reality.pr_number,
                 status="pr_watching",
                 metadata=metadata,
             )
         reason = (
             "PR review comments need user judgment before automated handling: "
-            + ", ".join(triage.needs_judgment_keys[:20])
+            + ", ".join(fresh_keys[:20])
         )
-        return db_client.mark_blocked(
-            run.repository_full_name,
-            run.github_issue_number,
-            reason,
-            metadata=metadata,
-        )
+        return db_client.mark_blocked(repo, issue, reason, metadata=metadata)
 
-    # Round-cap block (fresh actionable must-fix but no budget left).
-    if decision.phase == "blocked":
-        return db_client.mark_blocked(
-            run.repository_full_name,
-            run.github_issue_number,
-            decision.block_reason,
-            metadata=metadata,
-        )
+    # 5. Nothing actionable/unresolved remains: CI state gates ready_to_merge.
     return db_client.update_pr_fields(
-        run.repository_full_name,
-        run.github_issue_number,
+        repo,
+        issue,
         pr_number=reality.pr_number,
         status=decision.phase,
-        increment_fix_rounds=decision.increment_fix_rounds,
         metadata=metadata,
     )
 
@@ -797,7 +756,7 @@ def check_once(
     db_client,
     *,
     fetch_reality: Callable[[str, int], PrReality] = fetch_pr_reality,
-    assign_fix: Callable[[AgentRun, PrReality], None] | None = None,
+    assign_fix: Callable[[AgentRun, PrReality, list], None] | None = None,
     dispatch_handoff: Callable[[AgentRun, PrReality, list], bool] | None = None,
     validate_comment: Callable[[ReviewComment], str] = default_validate_comment,
 ) -> list[AgentRun]:
@@ -845,12 +804,12 @@ def check_once(
 # that already owns the run (``run.pm_pane`` / ``pm_pane_target(run.tmux_window)``)
 # using the same tmux delivery primitive the launcher uses to seed the PM.
 #
-# Duplicate handoffs are prevented by the per-comment ``handed_off`` flag in
-# ``pr_review_comments`` bookkeeping: only keys without it are dispatched, and a
-# successful delivery parks the run in ``status='fixing'`` so it leaves the watch
-# set until the PM re-arms it via ``mark_pr_open`` (status -> ``pr_open``). The
-# same key, if still ambiguous on re-entry, escalates to a human instead of
-# being re-sent.
+# Duplicate handoffs are prevented by the ``review_comments.handed_off_at``
+# column: only comments without it are dispatched, and a successful delivery
+# stamps it and parks the run in ``status='fixing'`` so it leaves the watch set
+# until the PM records a resolution and re-arms via ``mark_pr_open`` (status ->
+# ``pr_open``). The same key, if still ``unresolved`` on re-entry, escalates to a
+# human instead of being re-sent.
 
 
 # Directory containing the ``u_agents`` package (the dotfiles checkout root is
@@ -872,6 +831,27 @@ def mark_pr_open_command(repository_full_name: str, issue_number: int, pr_number
     return (
         f"PYTHONPATH={root} {python} -m u_agents.mark_pr_open "
         f"--repo {repository_full_name} --issue {issue_number} --pr {pr_number}"
+    )
+
+
+def record_resolution_command(
+    repository_full_name: str, issue_number: int, comment_key: str
+) -> str:
+    """Exact, shell-quoted command the PM runs to persist one comment's
+    resolution in ``review_comments`` before re-arming the watcher.
+
+    Mirrors ``mark_pr_open_command``: an explicit ``PYTHONPATH`` and the running
+    interpreter (which already imported psycopg), since the PM runs this from the
+    target repo worktree where ``u_agents`` is not on the path.
+    """
+    root = shlex.quote(str(_PACKAGE_DIR.parent))
+    python = shlex.quote(sys.executable)
+    key = shlex.quote(str(comment_key))
+    return (
+        f"PYTHONPATH={root} {python} -m u_agents.record_review_comment_resolution "
+        f"--repo {repository_full_name} --issue {issue_number} --comment-key {key} "
+        "--resolution-status <addressed|rejected|needs_user_judgment> "
+        "--pm-decision <verdict> [--commit-sha <sha>] --verification-summary <text>"
     )
 
 
@@ -909,6 +889,10 @@ def build_validation_handoff_prompt(
     rearm = mark_pr_open_command(
         run.repository_full_name, run.github_issue_number, reality.pr_number,
     )
+    record_lines = "\n".join(
+        f"       {record_resolution_command(run.repository_full_name, run.github_issue_number, key)}"
+        for key in keys
+    )
     return (
         "u-agents PR watcher handoff: validate PR review comments for "
         f"{run.repository_full_name}#{run.github_issue_number} "
@@ -944,36 +928,58 @@ def build_validation_handoff_prompt(
         "5. Address every valid_must_fix comment. Address each comment (by its "
         "[id:hash] key above) at most once; if you already addressed that exact "
         "key in a previous round, do not redo it.\n"
-        "6. Record your verdict for each key in your PR/issue report "
-        "(key -> verdict + one-line reason). For invalid / valid_optional / "
-        "needs_user_judgment the reason must justify NOT fixing it.\n"
-        "7. After addressing valid_must_fix comments and pushing, re-arm the "
-        "watcher by running exactly this full command; do not replace it with "
-        "a bare interpreter invocation:\n"
+        "6. Record a DURABLE resolution in the DB for EACH key BEFORE re-arming. "
+        "The watcher reads the review_comments table, NOT your PR/issue comment "
+        "text, so a verdict written only in a comment does not count and the run "
+        "will be re-blocked. Run exactly one of these per key (fill in the "
+        "status/decision/evidence):\n"
+        f"{record_lines}\n"
+        "   - resolution-status addressed requires --commit-sha and "
+        "--verification-summary (what you changed + how you verified it).\n"
+        "   - resolution-status rejected or needs_user_judgment requires "
+        "--verification-summary as the reason for not fixing.\n"
+        "7. Only AFTER recording a resolution for every key (and pushing any "
+        "fixes) re-arm the watcher by running exactly this full command; do not "
+        "replace it with a bare interpreter invocation:\n"
         f"       {rearm}\n"
-        "8. For needs_user_judgment comments, comment on the issue asking the "
+        "8. For needs_user_judgment comments, record resolution-status "
+        "needs_user_judgment with the reason AND comment on the issue asking the "
         "user; do not guess and do not silently skip.\n"
     )
 
 
-def build_fix_prompt(run: AgentRun, reality: PrReality) -> str:
+def build_fix_prompt(run: AgentRun, reality: PrReality, keys: list) -> str:
     """Prompt for the valid_must_fix path (used when an explicit validator has
-    already confirmed must-fix comments). Lists all current review comments and
-    asks the PM to address the validated must-fix ones and re-arm the watcher.
+    already confirmed must-fix comments).
+
+    ``keys`` are exactly the must-fix comment keys assigned this round. The
+    listing and the per-key record-resolution commands cover only those keys, so
+    needs_user_judgment / optional / invalid comments present in the same fetch
+    are NOT swept into the must-fix repair prompt; they keep their own handoff /
+    block / non-blocking paths.
     """
-    keys = [c.stable_key for c in reality.review_comments]
     listing = _format_comment_lines(reality, keys)
     rearm = mark_pr_open_command(
         run.repository_full_name, run.github_issue_number, reality.pr_number,
+    )
+    record_lines = "\n".join(
+        f"       {record_resolution_command(run.repository_full_name, run.github_issue_number, key)}"
+        for key in keys
     )
     return (
         "u-agents PR watcher: address validated must-fix review comments for "
         f"{run.repository_full_name}#{run.github_issue_number} "
         f"(PR #{reality.pr_number}).\n\n"
         f"{listing}\n\n"
-        "Address each validated must-fix comment exactly once, push, then "
-        "re-arm the watcher by running exactly this full command; do not "
-        "replace it with a bare interpreter invocation:\n"
+        "Address each validated must-fix comment exactly once and push. Then, "
+        "BEFORE re-arming, record a durable resolution in the DB for each key "
+        "(the watcher reads review_comments, not your comment text); for an "
+        "addressed comment pass --resolution-status addressed --commit-sha "
+        "<sha> --verification-summary <text>:\n"
+        f"{record_lines}\n"
+        "Only after recording resolutions re-arm the watcher by running exactly "
+        "this full command; do not replace it with a bare interpreter "
+        "invocation:\n"
         f"       {rearm}\n"
     )
 
@@ -1012,9 +1018,9 @@ def live_dispatch_handoff(run: AgentRun, reality: PrReality, keys: list) -> bool
     return _send_pm_prompt(run, build_validation_handoff_prompt(run, reality, keys))
 
 
-def live_assign_fix(run: AgentRun, reality: PrReality) -> None:
-    """Production fix dispatch for the valid_must_fix path."""
-    _send_pm_prompt(run, build_fix_prompt(run, reality))
+def live_assign_fix(run: AgentRun, reality: PrReality, keys: list) -> None:
+    """Production fix dispatch for the valid_must_fix path (assigned keys only)."""
+    _send_pm_prompt(run, build_fix_prompt(run, reality, keys))
 
 
 def main(argv=None) -> int:

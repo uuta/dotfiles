@@ -2,11 +2,18 @@ import re
 import unittest
 from pathlib import Path
 
-from u_agents.control_plane import AGENT_RUN_STATUSES, RUN_PHASE_STATUSES
+from u_agents.control_plane import (
+    AGENT_RUN_STATUSES,
+    REVIEW_COMMENT_RESOLUTION_STATUSES,
+    REVIEW_COMMENT_SOURCES,
+    REVIEW_COMMENT_VERDICTS,
+    RUN_PHASE_STATUSES,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "u_agents" / "db" / "001_agent_runs.sql"
+REVIEW_COMMENTS_SCHEMA = ROOT / "u_agents" / "db" / "003_review_comments.sql"
 DB_README = ROOT / "u_agents" / "db" / "README.md"
 COMPOSE = ROOT / "u_agents" / "compose.yml"
 
@@ -109,6 +116,108 @@ class TestAgentRunsSchema(unittest.TestCase):
         self.assertIn("CREATE TRIGGER agent_runs_set_updated_at", self.sql)
 
 
+class TestReviewCommentsSchema(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.sql = REVIEW_COMMENTS_SCHEMA.read_text(encoding="utf-8")
+
+    def test_table_and_generated_comment_key_exist(self):
+        self.assertIn("review_comments", self.sql)
+        self.assertIn(
+            "REFERENCES public.agent_runs(run_id)\n        ON DELETE CASCADE",
+            self.sql,
+        )
+        self.assertIn(
+            "comment_key text GENERATED ALWAYS AS (", self.sql,
+        )
+        self.assertIn("github_comment_id::text || ':' || body_hash", self.sql)
+        self.assertIn(
+            "PRIMARY KEY (agent_run_id, comment_key)", self.sql,
+        )
+
+    def test_required_columns_exist(self):
+        for column in (
+            "agent_run_id",
+            "github_comment_id",
+            "body_hash",
+            "comment_key",
+            "pr_number",
+            "source",
+            "watcher_verdict",
+            "pm_decision",
+            "resolution_status",
+            "original_body",
+            "original_path",
+            "original_line",
+            "original_commit_sha",
+            "handed_off_at",
+            "resolved_at",
+            "addressed_by_commit_sha",
+            "verification_summary",
+            "verification_refs",
+            "first_seen_at",
+            "last_seen_at",
+            "created_at",
+            "updated_at",
+        ):
+            with self.subTest(column=column):
+                self.assertRegex(self.sql, rf"\b{column}\b")
+
+    def test_enum_checks_match_python_contract(self):
+        for source in REVIEW_COMMENT_SOURCES:
+            with self.subTest(source=source):
+                self.assertIn(f"'{source}'", self.sql)
+        for verdict in REVIEW_COMMENT_VERDICTS:
+            with self.subTest(verdict=verdict):
+                self.assertIn(f"'{verdict}'", self.sql)
+        for status in REVIEW_COMMENT_RESOLUTION_STATUSES:
+            with self.subTest(resolution_status=status):
+                self.assertIn(f"'{status}'", self.sql)
+
+    def test_addressed_requires_commit_and_verification(self):
+        self.assertIn("review_comments_addressed_requires_commit_check", self.sql)
+        self.assertIn(
+            "review_comments_addressed_requires_verification_check", self.sql,
+        )
+        # addressed must carry a non-empty commit sha and verification summary.
+        self.assertIn("resolution_status <> 'addressed'", self.sql)
+        self.assertIn("btrim(addressed_by_commit_sha) <> ''", self.sql)
+        self.assertIn("btrim(verification_summary) <> ''", self.sql)
+
+    def test_rejected_and_judgment_require_reason(self):
+        self.assertIn("review_comments_terminal_reason_check", self.sql)
+        self.assertIn(
+            "resolution_status NOT IN ('rejected', 'needs_user_judgment')",
+            self.sql,
+        )
+        self.assertIn("verification_summary IS NOT NULL", self.sql)
+        self.assertIn("btrim(verification_summary) <> ''", self.sql)
+
+    def test_resolved_at_consistency_constraint(self):
+        self.assertIn("review_comments_resolved_at_check", self.sql)
+        self.assertIn("resolution_status = 'unresolved' AND resolved_at IS NULL", self.sql)
+        self.assertIn(
+            "resolution_status <> 'unresolved' AND resolved_at IS NOT NULL", self.sql,
+        )
+
+    def test_verification_refs_must_be_json_array(self):
+        self.assertIn("review_comments_verification_refs_array_check", self.sql)
+        self.assertIn("jsonb_typeof(verification_refs) = 'array'", self.sql)
+
+    def test_pr_number_and_body_hash_checks(self):
+        self.assertIn("review_comments_pr_number_check", self.sql)
+        self.assertIn("pr_number > 0", self.sql)
+        self.assertIn("review_comments_body_hash_check", self.sql)
+        self.assertIn("btrim(body_hash) <> ''", self.sql)
+
+    def test_indexes_and_updated_at_trigger(self):
+        self.assertIn("review_comments_run_resolution_idx", self.sql)
+        self.assertIn("review_comments_pr_idx", self.sql)
+        self.assertIn("review_comments_last_seen_idx", self.sql)
+        self.assertIn("CREATE TRIGGER review_comments_set_updated_at", self.sql)
+        self.assertIn("EXECUTE FUNCTION set_agent_runs_updated_at()", self.sql)
+
+
 class TestDbDocsContract(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -145,6 +254,30 @@ class TestDbDocsContract(unittest.TestCase):
         ):
             with self.subTest(text=text):
                 self.assertIn(text, self.readme)
+
+    def test_docs_describe_review_comments_table_and_ownership(self):
+        for text in (
+            "## Table: review_comments",
+            "### State ownership",
+            "### Watcher decision contract",
+            "u_agents.record_review_comment_resolution",
+            "`mark_pr_open`: only re-arms the PR watcher",
+            "records the resolution **before** re-arming",
+            "`resolution_status = 'addressed'` does not block",
+            "`resolution_status = 'rejected'` does not block",
+            "`resolution_status = 'needs_user_judgment'` blocks",
+            "`handed_off_at IS NULL` is handed off",
+            "`handed_off_at IS NOT NULL` blocks",
+            "no longer the source of truth",
+        ):
+            with self.subTest(text=text):
+                self.assertIn(text, self.readme)
+        for source in REVIEW_COMMENT_SOURCES:
+            with self.subTest(source=source):
+                self.assertIn(f"`{source}`", self.readme)
+        for status in REVIEW_COMMENT_RESOLUTION_STATUSES:
+            with self.subTest(resolution_status=status):
+                self.assertIn(f"`{status}`", self.readme)
 
 
 class TestComposeContract(unittest.TestCase):

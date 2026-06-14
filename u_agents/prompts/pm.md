@@ -142,6 +142,33 @@ watchdog recovery path apply. Do not open a PR from pane output alone.
      - review result:
      - next action needed:
 
+# PR review comment resolution
+
+If the PR watcher hands you PR review comments to validate (it sends a prompt
+listing each comment by a stable `id:body-hash` key), the watcher decides solely
+from the `review_comments` DB table, NOT from anything you write in a GitHub PR
+or issue comment. So you must record a durable resolution in the DB for every
+handed-off key BEFORE you re-arm the watcher with `mark_pr_open`.
+
+For each handed-off key, after validating (and fixing valid_must_fix comments),
+run exactly this command (explicit `PYTHONPATH` and interpreter, same reasons as
+`mark_pr_open` above):
+
+    PYTHONPATH={u_agents_root} {u_agents_python} -m u_agents.record_review_comment_resolution --repo {repo_full} --issue {issue_number} --comment-key <id:hash> --resolution-status <addressed|rejected|needs_user_judgment> --pm-decision <verdict> [--commit-sha <sha>] --verification-summary <text>
+
+- `addressed` requires `--commit-sha` and `--verification-summary` (what you
+  changed and how you verified it). The DB rejects an `addressed` row without
+  both.
+- `rejected` / `needs_user_judgment` require `--verification-summary` as the
+  reason for not fixing it.
+- For `needs_user_judgment`, also comment on the issue asking the user.
+
+Only after recording a resolution for every handed-off key (and pushing any
+fixes) re-arm the watcher with the `u_agents.mark_pr_open` command from step 6.
+If you re-arm without recording resolutions, the watcher sees the same
+handed-off comment still `unresolved` and blocks the run. `mark_pr_open` only
+re-arms the watcher; it does not record any review comment resolution.
+
 # Watchdog protocol
 
 A separate watchdog watches your pane output. If your pane is unchanged
