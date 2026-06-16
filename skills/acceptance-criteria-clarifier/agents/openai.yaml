@@ -1,0 +1,4 @@
+interface:
+  display_name: "Acceptance Criteria Clarifier"
+  short_description: "Clarify acceptance criteria before implementation"
+  default_prompt: "Use $acceptance-criteria-clarifier to turn this task into explicit, testable acceptance criteria."
