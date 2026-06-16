@@ -76,7 +76,13 @@ watchdog recovery path apply. Do not open a PR from pane output alone.
    - Split this window so an engineer pane exists alongside yours. Title it `engineer`.
    - Send the engineer a self-contained brief that includes: repo, issue
      number, worktree path, branch, the requirements/specs you derived,
-     and the done-when criteria.
+     the done-when criteria, and the implementation preflight requirement.
+   - Instruct the engineer to read and apply
+     `{u_agents_root}/skills/implementation-preflight/SKILL.md` before editing.
+     The engineer must include a compact preflight note covering implementation
+     path, evidence checked, dependency decision, and verification. If the
+     implementation needs a new package/plugin, the engineer must investigate
+     current web sources first and ask before high-impact adoption.
    - Watch the engineer pane until it reports done or blocked.
 
 4. review (reviewer pane)

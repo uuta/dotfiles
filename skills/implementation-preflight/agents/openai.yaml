@@ -1,0 +1,4 @@
+interface:
+  display_name: "Implementation Preflight"
+  short_description: "Choose reuse, refactor, adopt, or build before coding."
+  default_prompt: "Use $implementation-preflight before starting implementation to choose reuse, refactor, dependency adoption, or minimal new code."

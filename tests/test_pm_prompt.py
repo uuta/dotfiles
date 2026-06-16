@@ -55,6 +55,15 @@ class TestPmPromptContent(unittest.TestCase):
         # mark_pr_open does not own review comment resolution.
         self.assertIn("mark_pr_open` only\nre-arms the watcher", self.text)
 
+    def test_engineer_handoff_requires_implementation_preflight(self):
+        self.assertIn(
+            "{u_agents_root}/skills/implementation-preflight/SKILL.md",
+            self.text,
+        )
+        self.assertIn("compact preflight note", self.text)
+        self.assertIn("current web sources", self.text)
+        self.assertIn("ask before high-impact adoption", self.text)
+
 
 class TestPmPromptRenders(unittest.TestCase):
     """The whole template must still render: every {placeholder} added for the
@@ -84,6 +93,10 @@ class TestPmPromptRenders(unittest.TestCase):
         self.assertNotIn("{u_agents_python}", rendered)
         # Literal placeholder for the PR number is left for the PM to fill.
         self.assertIn("<pr-number>", rendered)
+        self.assertIn(
+            f"{expected_root}/skills/implementation-preflight/SKILL.md",
+            rendered,
+        )
 
 
 if __name__ == "__main__":
