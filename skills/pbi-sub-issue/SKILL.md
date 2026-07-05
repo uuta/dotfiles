@@ -37,7 +37,7 @@ sub-issue 作成前に、親 issue とタスク分割プランが ready か確�
 - 方針決定、仕様確認、単なる「明確化」が主目的
 - 親 issue の矛盾や未決事項を子 issue に逃がしている
 - acceptance criteria が実行不能、または現在のコード/運用契約と矛盾している
-- 成果物が code / test / docs / config / migration / visual baseline などの review 可能な差分として定義されていない
+- 成果物が code / test / docs / config / migration / UI vocabulary contract / visual baseline などの review 可能な差分として定義されていない
 - `Done when` / `Not done if` / 必須 verification が書けない
 
 この場合は sub-issue を作らず、親 issue に spec correction コメントまたは本文修正案を出す。
@@ -61,12 +61,18 @@ sub-issue 作成前に、親 issue とタスク分割プランが ready か確�
 
 visual UI PBI の場合:
 
-- `Visual shell / draft UI + visual regression gate` を integration / cleanup より先の phase gate として扱う。
-- 複数 agent が並列で実装する場合だけ、visual shell を独立 sub-issue にしてよい。
-- non-visual parallel tasks は依存なしで作成してよいが、body に「visual baseline / threshold / selector を変更しない」と明記する。
+- 先に source of truth が screenshot-driven か vocabulary-driven か確認する。
+- screenshot-driven は、approved screenshot / mockup / ideal image / golden baseline が binding reference の場合だけにする。
+- screenshot-driven の場合、`Visual shell / draft UI + visual regression gate` を integration / cleanup より先の phase gate として扱う。
+- screenshot-driven で複数 agent が並列で実装する場合だけ、visual shell を独立 sub-issue にしてよい。
+- screenshot-driven の non-visual parallel tasks は依存なしで作成してよいが、body に「visual baseline / threshold / selector を変更しない」と明記する。
 - visual shell を独立 sub-issue にした場合だけ、integration task には visual shell task の issue 番号を依存として入れる。
 - cleanup を独立 sub-issue にした場合だけ、integration task の issue 番号を依存として入れる。
 - golden / screenshot baseline を変更するタスクを作る場合は、user approval required と明記する。
+- vocabulary-driven は、共通部品・tokens・type roles・color roles・emblem・UI vocabulary が source of truth の場合に使う。この場合は `Frozen ref` / golden / screenshot baseline を作らない。
+- vocabulary-driven の場合、先行 sub-issue は必要最小の `UI vocabulary contract / primitive API` だけにしてよい。各 screen sub-issue はその vocabulary を参照して並列実装可能にする。
+- vocabulary-driven の screen sub-issue には、required primitives、information units、state/transition、forbidden screen-local styling、completion screenshot as review evidence を書く。
+- vocabulary-driven の consistency audit は最後の phase gate または独立 sub-issue として扱い、screen-local styling、重複進捗、情報を持たない装飾、world drift を確認する。
 
 ### 4. Sub-issue の作成（各タスクごと）
 
@@ -186,7 +192,8 @@ gh sub-issue add 1324 --sub-issue-number $ISSUE_NUM
 
 ## 備考
 - 独立して実施可能 / phase gate を含む / user approval required 等
-- visual UI task の場合: golden / screenshot baseline、threshold、selector、visual expectation は user approval なしに変更しない
+- screenshot-driven visual UI task の場合: golden / screenshot baseline、threshold、selector、visual expectation は user approval なしに変更しない
+- vocabulary-driven visual UI task の場合: UI vocabulary / required primitives / forbidden screen-local styling を守り、completion screenshot は review evidence として添付する
 
 ## 参考
 - `path/to/reference`

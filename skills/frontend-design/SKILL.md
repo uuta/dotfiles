@@ -4,19 +4,40 @@ description: Create distinctive, production-grade frontend interfaces with high 
 license: Complete terms in LICENSE.txt
 ---
 
-This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details and creative choices.
+This skill guides creation of distinctive, production-grade frontend interfaces that avoid generic "AI slop" aesthetics. Implement real working code with exceptional attention to aesthetic details, creative choices, and product consistency.
 
 The user provides frontend requirements: a component, page, application, or interface to build. They may include context about the purpose, audience, or technical constraints.
 
 ## Design Thinking
 
-Before coding, understand the context and commit to a BOLD aesthetic direction:
+Before coding, understand the context and commit to a clear aesthetic direction:
 - **Purpose**: What problem does this interface solve? Who uses it?
-- **Tone**: Pick an extreme: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. There are so many flavors to choose from. Use these for inspiration but design one that is true to the aesthetic direction.
+- **Tone**: Pick an intentional direction: brutally minimal, maximalist chaos, retro-futuristic, organic/natural, luxury/refined, playful/toy-like, editorial/magazine, brutalist/raw, art deco/geometric, soft/pastel, industrial/utilitarian, etc. Use these for inspiration but design one that is true to the product.
 - **Constraints**: Technical requirements (framework, performance, accessibility).
 - **Differentiation**: What makes this UNFORGETTABLE? What's the one thing someone will remember?
 
 **CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
+
+## Multi-Screen Product Flows
+
+For apps, onboarding flows, dashboards, or any UI where multiple screens must feel like one product, prioritize a shared UI vocabulary over per-screen novelty.
+
+Before implementing screens, define or reuse:
+
+- Tokens: color roles, type roles, spacing scale, radius, elevation, motion roles.
+- Primitives: screen shell, buttons, selectors, emblem/icon treatments, progress indicators, cards, status dots, input rows.
+- Component APIs: stable props and states that screen agents can compose.
+- Information units: what each screen must communicate and which primitive carries each unit.
+- Forbidden drift: new colors, one-off type styles, new emblem variants, duplicate progress signals, and decorative layers with no information role.
+
+Do not create or require `Frozen ref`, golden image, screenshot threshold, or screenshot baseline unless the user gives an approved screenshot/mockup as a binding visual target. When the source of truth is a UI vocabulary, screenshots are completion evidence for human review, not the contract itself.
+
+To preserve parallel implementation:
+
+- Fix the smallest useful vocabulary/API contract first.
+- Let screen tasks compose those primitives in parallel.
+- Require screen tasks to ask before adding new vocabulary.
+- Add a final consistency audit for screen-local styling, clutter, repeated progress indicators, and world drift.
 
 Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
 - Production-grade and functional
@@ -34,6 +55,8 @@ Focus on:
 - **Backgrounds & Visual Details**: Create atmosphere and depth rather than defaulting to solid colors. Add contextual effects and textures that match the overall aesthetic. Apply creative forms like gradient meshes, noise textures, geometric patterns, layered transparencies, dramatic shadows, decorative borders, custom cursors, and grain overlays.
 
 NEVER use generic AI-generated aesthetics like overused font families (Inter, Roboto, Arial, system fonts), cliched color schemes (particularly purple gradients on white backgrounds), predictable layouts and component patterns, and cookie-cutter design that lacks context-specific character.
+
+For product tools and learning flows, decoration must carry information, feedback, affordance, or product identity. Remove visual layers that only add weight or make multiple screens diverge.
 
 Interpret creatively and make unexpected choices that feel genuinely designed for the context. No design should be the same. Vary between light and dark themes, different fonts, different aesthetics. NEVER converge on common choices (Space Grotesk, for example) across generations.
 

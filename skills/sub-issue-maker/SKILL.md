@@ -16,7 +16,7 @@ sub-issue にしてはいけないもの:
 - 方針決定、仕様確認、単なる「明確化」
 - 親 issue の矛盾や未決事項を子 issue に逃がしているもの
 - acceptance criteria が現在のコード・運用契約で実行不能なもの
-- 成果物が code / test / docs / config / migration / visual baseline などの review 可能な差分として定義できないもの
+- 成果物が code / test / docs / config / migration / UI vocabulary contract / visual baseline などの review 可能な差分として定義できないもの
 
 この場合は sub-issue を作らず、親 issue に spec correction コメントまたは本文修正案を出してください。
 
@@ -35,7 +35,7 @@ Boundary / Contract の内容例:
 - OpenAPI / Swagger / interface の更新
 - sequence diagram や request examples の記述
 
-Boundary / Contract を独立 sub-issue にできるのは、OpenAPI 更新、typed client 更新、DB migration 契約、visual regression baseline など、成果物が実装可能で test / review できる場合に限ります。
+Boundary / Contract を独立 sub-issue にできるのは、OpenAPI 更新、typed client 更新、DB migration 契約、UI vocabulary contract / primitive API、visual regression baseline など、成果物が実装可能で test / review できる場合に限ります。
 
 task 粒度の目安:
 

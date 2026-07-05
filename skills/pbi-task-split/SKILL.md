@@ -1,6 +1,6 @@
 ---
 name: pbi-task-split
-description: PBI（Product Backlog Item）を agent 実装向けの粗めの実装タスクまたは phase gate に分割する。親 issue の ready 判定、implementation contract、blackbox/runtime acceptance、依存関係、review checkpoint を整理し、方針未決・仕様矛盾・単なる明確化を sub-issue 化しない。スクリーンショットや理想UI画像を含むPBIでは visual-ui-contract を使って visual gate を契約に入れる。
+description: PBI（Product Backlog Item）を agent 実装向けの粗めの実装タスクまたは phase gate に分割する。親 issue の ready 判定、implementation contract、blackbox/runtime acceptance、依存関係、review checkpoint を整理し、方針未決・仕様矛盾・単なる明確化を sub-issue 化しない。UI PBI では approved screenshot/golden が source of truth の場合だけ visual-ui-contract を使い、共通部品・tokens・UI vocabulary が source of truth の場合は vocabulary contract で並列実装可能にする。
 ---
 
 # PBI Task Split
@@ -58,11 +58,23 @@ Ready でない場合:
   - sequence diagram や request examples の作成
   - OpenAPI / Swagger / interface / typed client contract の更新
 - **重要**: interface が曖昧なまま実装に入らない。ただし「契約を決めるだけ」の sub-issue は原則作らない。
-- 例外的に boundary / contract を独立 issue にできるのは、成果物が実装可能な artifact（OpenAPI 更新、typed client 更新、DB migration 契約、visual regression baseline など）として明確で、その issue だけで test / review できる場合に限る。
+- 例外的に boundary / contract を独立 issue にできるのは、成果物が実装可能な artifact（OpenAPI 更新、typed client 更新、DB migration 契約、UI vocabulary contract / primitive API、visual regression baseline など）として明確で、その issue だけで test / review できる場合に限る。
 
-### 3.5 visual UI contract の有無を判定
-- 親 Issue / PBI に screenshot、mockup、ideal image、visual fidelity、UI polish、golden / screenshot test の要求がある場合は `visual-ui-contract` を使う。
-- その場合、実装タスクの前に **Visual shell / draft UI component + visual regression gate** を契約に入れる。
+### 3.5 UI visual source of truth を判定
+
+UI PBI では、先に source of truth を分類する。
+
+#### A. Screenshot-driven / baseline-driven UI
+
+次のいずれかがある場合だけ `visual-ui-contract` を使う。
+
+- approved screenshot / mockup / ideal image が binding reference として明記されている
+- golden / screenshot baseline / visual regression test が acceptance の source of truth になっている
+- visual fidelity / pixel-level or layout-level reproduction が要求されている
+
+この場合:
+
+- 実装タスクの前に **Visual shell / draft UI component + visual regression gate** を契約に入れる。
 - 複数 agent が並列で real flow integration へ進むなら visual shell を独立 issue にしてよい。単独 agent が実装するなら同一 issue 内の phase gate として扱ってよい。
 - この先行タスクは mock data で理想UIに近い component composition を作り、golden / screenshot / component-level visual test を追加する。
 - component の分割と draft UI を分けると後続 agent が別UIを組み立てられる場合は、同じ先行タスクにまとめる。
@@ -70,6 +82,19 @@ Ready でない場合:
 - real flow への mount / provider integration は visual shell タスクに依存させる。
 - old modal / wrapper / legacy UI の削除は replacement UI が mount され visual gate が通った後の cleanup に置く。
 - visual test が fail した場合、agent は baseline / threshold / selector / expectation を変更して通してはいけない。実装を直す。baseline 更新は user approval required と明記する。
+
+#### B. Vocabulary-driven / common-primitives UI
+
+approved screenshot がなく、共通部品・tokens・type roles・color roles・emblem・UI vocabulary が source of truth の場合は `visual-ui-contract` を使わない。`Frozen ref` / golden / screenshot baseline を作らない。
+
+この場合:
+
+- 親 issue または先行 phase gate に **UI vocabulary contract** を固定する。
+- vocabulary contract には tokens、required primitives、component APIs、allowed composition、forbidden screen-local styling、information units、state/transition requirements を書く。
+- screenshot は review evidence として要求してよいが、source of truth ではないと明記する。
+- 並列化したい場合、vocabulary の最小 API / stub / token contract だけを先に固定し、各 screen issue はその vocabulary を参照して並列実装する。
+- screen issue は vocabulary 自体を勝手に増やさない。新しい primitive / token / emblem が必要なら parent issue の vocabulary contract 更新として扱う。
+- 横断 consistency audit を最後の phase gate に置き、screen-local styling、重複進捗、情報を持たない装飾、world drift を潰す。
 
 ### 4. 共通化すべき部品の特定
 - 特定機能に配置されているが汎用的なコンポーネントを洗い出し
@@ -139,6 +164,7 @@ Ready でない場合:
 - {request / response / error shape}
 - {auth / ownership / identity の前提}
 - {in scope / out of scope}
+- {UI source of truth: approved visual baseline or UI vocabulary contract, if applicable}
 - {done when}
 - {not done if}
 - {hard blockers / accepted deferrals}
@@ -184,8 +210,10 @@ Ready でない場合:
 - {並列可能なタスクの説明}
 
 **Visual UI PBI の場合:**
-- `Visual shell / draft UI + visual gate` → `Integration` → `Cleanup` を phase gate または必要最小の sub-issue として表す
-- non-visual service/model/action tasks は visual baseline を触らない条件で並列可
+- screenshot-driven: `Visual shell / draft UI + visual gate` → `Integration` → `Cleanup` を phase gate または必要最小の sub-issue として表す
+- vocabulary-driven: `UI vocabulary contract / primitive API` → `Parallel screen implementation` → `Consistency audit` として表す
+- vocabulary-driven では screenshot は evidence であり source of truth ではない
+- non-visual service/model/action tasks は visual baseline または UI vocabulary を触らない条件で並列可
 
 ---
 
@@ -208,9 +236,12 @@ Ready でない場合:
 - [ ] 方針未決・仕様矛盾・単なる明確化を sub-issue にしていないか
 - [ ] 実装 issue は粗めで、1〜3個（最大5個）に収まっているか
 - [ ] phase を review / gate checkpoint として定義し、不要に sub-issue 化していないか
-- [ ] screenshot / ideal UI / visual fidelity がある場合、`visual-ui-contract` を使ったか
-- [ ] visual shell / draft UI + visual regression gate を integration より前に配置したか
-- [ ] visual baseline / threshold / selector を agent が勝手に更新しないルールを書いたか
+- [ ] UI PBI の source of truth が screenshot-driven か vocabulary-driven かを分類したか
+- [ ] approved screenshot / ideal UI / visual fidelity が source of truth の場合だけ `visual-ui-contract` を使ったか
+- [ ] screenshot-driven の場合、visual shell / draft UI + visual regression gate を integration より前に配置したか
+- [ ] screenshot-driven の場合、visual baseline / threshold / selector を agent が勝手に更新しないルールを書いたか
+- [ ] vocabulary-driven の場合、UI vocabulary contract、required primitives、forbidden screen-local styling、screen information units を明記したか
+- [ ] vocabulary-driven の場合、screen screenshot を source of truth ではなく review evidence として扱ったか
 - [ ] 並列実装前の source of truth を明示したか
 - [ ] レイヤー観点を確認したが、レイヤーごとの過剰分割をしていないか
 - [ ] 1タスク1 implementation contract になっているか

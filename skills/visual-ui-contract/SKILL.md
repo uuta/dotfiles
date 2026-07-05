@@ -1,6 +1,6 @@
 ---
 name: visual-ui-contract
-description: Create and enforce visual contracts for screenshot-driven UI work. Use when a task includes approved screenshots, mockups, ideal images, visual fidelity requirements, golden/screenshot tests, or when splitting/reviewing UI work where agents must preserve an intended layout.
+description: Create and enforce visual contracts for screenshot-driven UI work only when an approved screenshot, mockup, ideal image, golden baseline, or explicit visual fidelity target is the source of truth. Do not use for UI work governed by shared tokens, primitives, or a UI vocabulary unless an approved reference image is also binding.
 ---
 
 # Visual UI Contract
@@ -10,6 +10,26 @@ description: Create and enforce visual contracts for screenshot-driven UI work. 
 Use this skill to turn an approved UI image into an enforceable implementation contract. The contract should guide task splitting, agent assignment, and review so agents cannot satisfy behavior while drifting from the intended UI.
 
 Do not use this skill for ordinary UI wiring, copy changes, button behavior, or non-visual refactors unless the issue already has a visual contract or approved reference image.
+
+Do not invent a `Frozen ref`, golden baseline, screenshot threshold, or visual regression gate when the source of truth is a shared UI vocabulary, component library, token set, design world, or common primitives. In those cases, write an implementation contract around allowed primitives, information units, state behavior, and forbidden screen-local styling. Screenshots may be required as review evidence, but they are not the source of truth.
+
+## Non-Applicable: UI Vocabulary-Driven Work
+
+Use a UI vocabulary contract instead of this skill when:
+
+- The project expects screens to compose common primitives rather than reproduce an approved image.
+- The source of truth is tokens, type roles, color roles, emblems, component APIs, or shared layout primitives.
+- Parallel screen implementation should continue after a small vocabulary/API contract is fixed.
+- Screenshots are requested only to show completion for human review.
+
+For vocabulary-driven UI work, define:
+
+- UI vocabulary version and source file or issue section.
+- Required primitives and which screen-local choices are allowed.
+- Information units each screen must carry.
+- State and transition behavior.
+- Prohibited drift: new colors, type roles, emblem variants, duplicate progress signals, or decoration with no information role.
+- Verification: runtime flow checks and completion screenshots as evidence only.
 
 ## Core Rules
 
