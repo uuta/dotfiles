@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Sync markdown prompts to Codex and Claude destinations.
+# Sync markdown prompts to Codex and Claude destinations via symlinks.
+#
+# Symlinks (not copies) so that edits under prompts/ are reflected immediately
+# in both destinations without re-running this script. Re-run only to pick up
+# newly added prompts or to prune ones deleted from the repo.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROMPTS_DIR="$SCRIPT_DIR/prompts"
 CODEX_DEST="$HOME/.codex/prompts"
@@ -12,28 +16,43 @@ if [[ ! -d "$PROMPTS_DIR" ]]; then
   exit 1
 fi
 
-sync_file() {
+link_file() {
   local src="$1"
-  local rel_path="$2"
+  local target="$2"
 
-  local codex_rel
-  codex_rel="${rel_path//\//_}"
-  local codex_target="$CODEX_DEST/$codex_rel"
-  mkdir -p "$(dirname "$codex_target")"
-  if [[ ! -f "$codex_target" ]] || ! cmp -s "$src" "$codex_target"; then
-    cp "$src" "$codex_target"
-    echo "Updated Codex: $codex_target"
+  mkdir -p "$(dirname "$target")"
+
+  # Already the correct symlink -> nothing to do.
+  if [[ -L "$target" && "$(readlink "$target")" == "$src" ]]; then
+    return
   fi
 
-  local claude_target="$CLAUDE_DEST/$rel_path"
-  mkdir -p "$(dirname "$claude_target")"
-  if [[ ! -f "$claude_target" ]] || ! cmp -s "$src" "$claude_target"; then
-    cp "$src" "$claude_target"
-    echo "Updated Claude: $claude_target"
-  fi
+  # Replace whatever is there (stale copy or wrong link) with a fresh symlink.
+  ln -sfn "$src" "$target"
+  echo "Linked: $target -> $src"
 }
 
+# 1. Create/refresh a symlink for every source prompt.
+#    Codex flattens nested paths (task/foo.md -> task_foo.md); Claude keeps them nested.
 while IFS= read -r -d '' file; do
-  rel="${file#$PROMPTS_DIR/}"
-  sync_file "$file" "$rel"
+  rel="${file#"$PROMPTS_DIR"/}"
+  link_file "$file" "$CLAUDE_DEST/$rel"
+  link_file "$file" "$CODEX_DEST/${rel//\//_}"
 done < <(find "$PROMPTS_DIR" -type f -name '*.md' -print0)
+
+# 2. Prune symlinks that point back into this prompts dir but whose source is
+#    gone (i.e. prompts deleted from the repo). Only touches our own dangling
+#    links, never unrelated command files.
+prune_dangling() {
+  local dest="$1"
+  [[ -d "$dest" ]] || return 0
+  while IFS= read -r -d '' link; do
+    local tgt
+    tgt="$(readlink "$link")"
+    if [[ "$tgt" == "$PROMPTS_DIR"/* && ! -e "$link" ]]; then
+      rm -v "$link"
+    fi
+  done < <(find "$dest" -type l -print0)
+}
+prune_dangling "$CLAUDE_DEST"
+prune_dangling "$CODEX_DEST"
