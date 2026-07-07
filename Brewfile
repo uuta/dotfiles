@@ -136,6 +136,7 @@ cask "codex-app"
 cask "claudebar"
 cask "android-commandlinetools"
 cask "cmux"
+cask "capcut"
 
 # WezTerm
 tap "wez/wezterm"
