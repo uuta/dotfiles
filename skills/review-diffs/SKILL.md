@@ -184,6 +184,18 @@ Model / effort policy:
 - Other specialist reviewers use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient default for parallel work.
 - The manager pass (step 8) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / high when possible.
 
+### Engine policy
+
+Reviewers are engine-agnostic (see "Vendor-neutral by design"). Pick the engine per lens:
+
+- **Default is Claude.** An all-Claude run is the simplest and always correct — start here.
+- **Vision-required lenses stay on Claude.** `ui-visual` reads golden-diff / screenshot PNGs, and the manager reads them too during UI confirmation. Never route these to an engine that cannot view local images.
+- **`requirements` stays on the strongest model** (opus) — it is the judgment lens.
+- **Pure-code lenses MAY run on codex** (`correctness`, `security`, `reuse`, `resilience`, and code-only optionals like `concurrency` / `api-contract`). Mixing engines here is a *quality* lever, not just cost: different models miss different bugs, so running e.g. `correctness` on both Claude and codex and merging in the manager pass widens coverage. Launch codex the same way the `codex-review` skill does — a bare `codex` window whose approval/sandbox come from your codex config (kept at full-autonomy: approval never + full sandbox) — then inject the same lens prompt via tmux.
+- **Tradeoff:** cross-engine runs add orchestration overhead (two CLIs, separate prompt injection). Default to all-Claude; opt into codex on high-stakes diffs where model diversity is worth it, or to offload cost.
+
+Record the engine chosen per lens at the top of `docs/review/manager.md`, next to the selected perspectives.
+
 Launch the floor windows always, plus one window per selected optional lens:
 
 ```bash
@@ -198,7 +210,7 @@ tmux new-window -n review-reuse      -c "$(pwd)" 'claude --dangerously-skip-perm
 tmux new-window -n review-ui-visual  -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 ```
 
-To run reviewers on a different engine, swap the launched command (e.g. a `codex` invocation with full-autonomy flags) — the rest of the flow is unchanged.
+To run a lens on a different engine, swap that window's launch command (see **Engine policy** above) — the rest of the flow is unchanged. Cross-engine coverage (e.g. `correctness` on both Claude and codex) uses two windows for the one lens; the manager pass merges their findings.
 
 Wait for each window to become ready by polling `tmux capture-pane` until the idle prompt appears.
 
@@ -407,7 +419,7 @@ Judge findings against the contract, **not** by how many reviewers agreed. Revie
 
 Write the manager conclusion to `docs/review/manager.md` with:
 
-- the selected perspectives and any dropped-with-reason optional lenses (from step 3)
+- the selected perspectives (with the engine used per lens) and any dropped-with-reason optional lenses (from step 3)
 - overall assessment
 - remaining blockers
 - accepted deferrals
