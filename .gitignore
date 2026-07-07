@@ -8,6 +8,7 @@
 .config/.copilot/
 .config/configstore/
 .config/github-copilot/
+.config/karabiner/automatic_backups/
 test/node_modules/
 .worktrees/
 __pycache__/
