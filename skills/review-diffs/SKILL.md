@@ -1,7 +1,7 @@
 ---
 name: review-diffs
 description: Review git diffs with a manager-led workflow that preserves issue requirements. First derive a shared review contract from the user request and any linked issue or PR, then select review perspectives from a catalog (a mandatory floor plus diff-specific optional lenses, including a rendered UI/visual lens with web and Flutter-golden backends), run those perspectives as parallel tmux review agents, and finally perform a manager pass that checks total requirement coverage before summarizing.
-allowed-tools: Bash(tmux:*), Bash(git:*), Bash(mkdir:*), Bash(gh:*), Bash(rg:*), Bash(sed:*), Bash(flutter:*), Read
+allowed-tools: Bash(tmux:*), Bash(git:*), Bash(mkdir:*), Bash(gh:*), Bash(rg:*), Bash(sed:*), Bash(flutter:*), Bash(npx:*), Read
 ---
 
 # Review diffs
@@ -31,9 +31,9 @@ For the same reason, reviewer instructions and the UI/visual backends must be se
 ## Workflow
 
 1. Build a review contract before spawning reviewers
-2. Capture the diff and classify the touched surfaces
+2. Create `docs/review/`, capture the diff, and classify the touched surfaces
 3. Select perspectives from the catalog (floor + diff-specific optional)
-4. Create `docs/review/` and the per-perspective output files
+4. Prepare the per-perspective output files
 5. Launch parallel tmux reviewers for the selected perspectives
 6. Give every reviewer the same contract plus one perspective lens
 7. Poll until all reviewers finish
@@ -53,6 +53,12 @@ Preferred sources, in order:
 - the current diff and touched files
 
 If the user supplied an issue or PR number, read it. If the branch or commit message clearly references one, read that too. If there is no explicit issue, infer the contract from the request and changed files.
+
+Create the review directory before writing any review artifacts:
+
+```bash
+mkdir -p docs/review
+```
 
 Write a short contract to `docs/review/contract.md` with:
 
@@ -95,6 +101,7 @@ If the issue includes screenshot/mockup/ideal-image visual requirements, the con
 ## 2. Capture the diff and classify the touched surfaces
 
 ```bash
+mkdir -p docs/review
 git diff > docs/review/diff.txt
 ```
 
@@ -158,11 +165,7 @@ Selection rule (the manager does this inline — no separate model needed for a 
 
 Record the chosen set (and the dropped-with-reason list) at the top of `docs/review/manager.md`.
 
-## 4. Prepare the output directory
-
-```bash
-mkdir -p docs/review
-```
+## 4. Prepare the output files
 
 Create one output file per selected perspective, e.g.:
 
@@ -190,8 +193,9 @@ Reviewers are engine-agnostic (see "Vendor-neutral by design"). Pick the engine 
 
 - **Default is Claude.** An all-Claude run is the simplest and always correct — start here.
 - **Vision-required lenses stay on Claude.** `ui-visual` reads golden-diff / screenshot PNGs, and the manager reads them too during UI confirmation. Never route these to an engine that cannot view local images.
+- **Execution lenses need a stronger trust boundary.** `ui-visual` may run the reviewed branch's own code/dependencies (`flutter pub get`, `flutter test`, dev server, `npx playwright`). Run those steps only after the diff is already vetted, or inside an isolated/ephemeral worktree with no ambient credentials/network. Do not treat them like the read-only analytical lenses launched under blanket permission-skipped/full-autonomy settings.
 - **`requirements` stays on the strongest model** (opus) — it is the judgment lens.
-- **Pure-code lenses MAY run on codex** (`correctness`, `security`, `reuse`, `resilience`, and code-only optionals like `concurrency` / `api-contract`). Mixing engines here is a *quality* lever, not just cost: different models miss different bugs, so running e.g. `correctness` on both Claude and codex and merging in the manager pass widens coverage. Launch codex the same way the `codex-review` skill does — a bare `codex` window whose approval/sandbox come from your codex config (kept at full-autonomy: approval never + full sandbox) — then inject the same lens prompt via tmux.
+- **Pure-code lenses MAY run on codex** (`correctness`, `security`, `reuse`, `resilience`, and code-only optionals like `concurrency` / `api-contract`). Mixing engines here is a *quality* lever, not just cost: different models miss different bugs, so running e.g. `correctness` on both Claude and codex and merging in the manager pass widens coverage. Launch codex using the full-autonomy policy described in "Vendor-neutral by design" above, then inject the same lens prompt via tmux.
 - **Tradeoff:** cross-engine runs add orchestration overhead (two CLIs, separate prompt injection). Default to all-Claude; opt into codex on high-stakes diffs where model diversity is worth it, or to offload cost.
 
 Record the engine chosen per lens at the top of `docs/review/manager.md`, next to the selected perspectives.
@@ -204,7 +208,7 @@ tmux new-window -n review-req -c "$(pwd)" 'claude --dangerously-skip-permissions
 tmux new-window -n review-correctness -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 tmux new-window -n review-security -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 
-# optional — only the ones selected in step 3
+# optional — only the ones selected in step 3; run ui-visual only after the trust-boundary caveat above is satisfied
 tmux new-window -n review-resilience -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 tmux new-window -n review-reuse      -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
 tmux new-window -n review-ui-visual  -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
@@ -345,17 +349,26 @@ If there are no findings, say "No issues found."
 
 This lens reviews the **rendered UI**, not just the diff text. Pick the backend by the touched files. It is self-contained: it relies only on portable CLI tools, so it works whichever engine runs the window.
 
+This lens executes the reviewed branch's own code/dependencies. Run it only after the diff is already vetted, or inside an isolated/ephemeral worktree with no ambient credentials/network; do not put it under the same blanket `--dangerously-skip-permissions` / full-autonomy posture used for read-only analytical lenses.
+
 ```text
 Read docs/review/contract.md first, then docs/review/diff.txt and docs/review/touched.txt.
 
 Review the RENDERED UI, not just the diff text. Choose the backend by which files changed.
+
+Trust boundary: this lens may execute the reviewed branch's own code/dependencies (dev server,
+`npx playwright`, `flutter pub get`, `flutter test`). Run these steps only after the diff is
+already vetted, or inside an isolated/ephemeral worktree with no ambient credentials/network.
+
+If `ui-critique` / `visual-ui-contract` are available, prefer their canonical criteria; otherwise
+use this abridged checklist.
 
 === WEB backend (*.tsx / *.jsx / *.vue / *.svelte / *.css / *.scss / *.html changed) ===
 - Render the affected screen/component headlessly (e.g. `npx playwright screenshot <url> shot.png`,
   or the project's existing story/preview/dev server). Save the screenshot under docs/review/.
 - If an approved screenshot / golden / mockup exists (a visual contract), judge FIDELITY:
   does the render match the reference? Do NOT weaken or change baselines, thresholds, or selectors.
-- If no golden exists, judge QUALITY: visual hierarchy, spacing/rhythm, alignment, contrast/a11y,
+- If no approved visual reference exists, judge QUALITY: visual hierarchy, spacing/rhythm, alignment, contrast/a11y,
   and "AI-generated" tells (generic gradients, over-centering, uniform card grids, decorative noise).
   Bias fixes toward subtraction and preserve the existing design world.
 
@@ -366,20 +379,25 @@ Review the RENDERED UI, not just the diff text. Choose the backend by which file
   invoke `fvm flutter ...`; otherwise `flutter ...`.
 - Ensure deps are resolved before testing — a fresh worktree has no `.dart_tool/`:
     [ -f .dart_tool/package_config.json ] || flutter pub get
+  If `flutter pub get` fails, report a VERIFICATION/TOOLING GAP, not PASS or REGRESSION.
 - Find golden tests and map them to the touched widgets/screens:
     rg -l "matchesGoldenFile" test
+  If there is no golden-test infra project-wide (`test/` missing or no matches), report one
+  project-wide missing golden infrastructure observation.
 - Run the relevant golden tests WITHOUT updating goldens (goldens are the source of truth):
     flutter test <relevant_test_paths>
   NEVER pass --update-goldens.
+  If `flutter test` errors before producing golden-diff images (compile, resolution, missing
+  tooling, or no `failures/` images), report a VERIFICATION/TOOLING GAP, not PASS or REGRESSION.
 - PASS  -> visual fidelity is preserved for the covered widgets.
-- FAIL  -> Flutter writes failure images under a `failures/` dir next to the test. Read them:
+- FAIL with golden failure images -> Flutter writes failure images under a `failures/` dir next to the test. Read them:
     <name>_masterImage.png   (expected / golden)
     <name>_testImage.png     (actual)
     <name>_isolatedDiff.png  /  <name>_maskedDiff.png   (what moved)
   Describe where and how much drifted, and classify each as an INTENDED change (allowed by the
   contract) or a REGRESSION. Attach the image paths as evidence.
-- A touched widget with NO golden -> report as "missing golden coverage" (a requirement/coverage
-  gap). Do not pass it silently.
+- If golden infra exists but a touched widget has NO golden -> report that widget as "missing
+  golden coverage" (a requirement/coverage gap). Do not pass it silently.
 - Golden / threshold / selector changes require user approval. Never make them yourself. A
   legitimate baseline update is a finding to ESCALATE, not something to apply.
 
@@ -401,6 +419,8 @@ A reviewer is done when:
 
 - the output file has been written, and
 - the pane is back at the idle agent prompt
+
+Use a bounded wait, not an infinite poll. If a window is not done after the local timeout (for example, 20 minutes), capture a larger pane tail and diagnose before continuing. If the pane shows a launch error, an unexpected interactive prompt, or an idle shell/agent prompt with no output file (including a codex window that failed to launch and looks idle), kill and relaunch that lens or escalate the verification gap to the user.
 
 ## 8. Manager pass is mandatory
 
@@ -452,9 +472,12 @@ Do not simply aggregate reviewer counts. The output should reflect the manager's
 Close the review windows when finished (only the ones you opened):
 
 ```bash
+# floor
 tmux kill-window -t review-req
 tmux kill-window -t review-correctness
 tmux kill-window -t review-security
+
+# optional — include only if you opened it
 tmux kill-window -t review-resilience
 tmux kill-window -t review-reuse
 tmux kill-window -t review-ui-visual
