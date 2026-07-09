@@ -80,5 +80,5 @@ graph LR
     C -->|symlink| CJ
 ```
 
-- `./prompts.sh` copies prompts to both `~/.codex` and `~/.claude/commands`
+- `./prompts.sh` symlinks prompts to both `~/.codex` and `~/.claude/commands`
 - `.zshrc` ensures the managed symlinks exist for shared config and agent tooling

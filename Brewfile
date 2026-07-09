@@ -73,6 +73,7 @@ brew "fzf"
 brew "qwen-code"
 brew "rustup"
 brew "tree-sitter-cli"
+brew "rtk"
 
 # Go
 brew "gopls"

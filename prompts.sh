@@ -6,6 +6,8 @@ set -euo pipefail
 # Symlinks (not copies) so that edits under prompts/ are reflected immediately
 # in both destinations without re-running this script. Re-run only to pick up
 # newly added prompts or to prune ones deleted from the repo.
+# Only symlinked destinations self-heal during prune; old regular-file copies
+# are left untouched because this script cannot prove ownership.
 SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 PROMPTS_DIR="$SCRIPT_DIR/prompts"
 CODEX_DEST="$HOME/.codex/prompts"
@@ -27,7 +29,12 @@ link_file() {
     return
   fi
 
-  # Replace whatever is there (stale copy or wrong link) with a fresh symlink.
+  if [[ -e "$target" && ! -L "$target" ]]; then
+    printf 'warn: refusing to replace existing non-symlink %s\n' "$target" >&2
+    return
+  fi
+
+  # Replace a wrong or stale symlink with a fresh symlink.
   ln -sfn "$src" "$target"
   echo "Linked: $target -> $src"
 }
@@ -48,9 +55,9 @@ prune_dangling() {
   [[ -d "$dest" ]] || return 0
   while IFS= read -r -d '' link; do
     local tgt
-    tgt="$(readlink "$link")"
+    tgt="$(readlink "$link" 2>/dev/null)" || continue
     if [[ "$tgt" == "$PROMPTS_DIR"/* && ! -e "$link" ]]; then
-      rm -v "$link"
+      rm -v "$link" || printf 'warn: could not remove %s\n' "$link" >&2
     fi
   done < <(find "$dest" -type l -print0)
 }
