@@ -12,6 +12,12 @@ from u_agents.launcher import (
 )
 
 PM_PROMPT = Path(__file__).resolve().parent.parent / "u_agents" / "prompts" / "pm.md"
+LEGACY_REVIEW_DIFF_PROMPT = (
+    Path(__file__).resolve().parent.parent / "prompts" / "review-diff.md"
+)
+REVIEW_DIFFS_SKILL = (
+    Path(__file__).resolve().parent.parent / "skills" / "review-diffs" / "SKILL.md"
+)
 
 
 class TestPmPromptContent(unittest.TestCase):
@@ -64,6 +70,36 @@ class TestPmPromptContent(unittest.TestCase):
         self.assertIn("current web sources", self.text)
         self.assertIn("ask before high-impact adoption", self.text)
 
+    def test_local_review_requires_plural_review_diffs(self):
+        self.assertIn("manager-led `review-diffs` skill", self.text)
+        self.assertIn("mandatory local\n     review entry point", self.text)
+        self.assertIn("before PR creation", self.text)
+        self.assertIn("{worktree}", self.text)
+        self.assertIn("{branch}", self.text)
+        self.assertNotIn("`review-diff`", self.text)
+        self.assertNotIn("or the project's equivalent", self.text)
+
+    def test_web_ui_review_requires_rendered_visual_evidence(self):
+        self.assertIn("the reviewer must include the `ui-visual` lens", self.text)
+        self.assertIn("not production", self.text)
+        self.assertIn("before the PR is created", self.text)
+        for width in ["900", "1180", "1440", "1920"]:
+            self.assertIn(width, self.text)
+        self.assertIn("screenshot paths", self.text)
+        self.assertIn("verification/tooling gap", self.text)
+        self.assertIn("{review_result}` under `verification`", self.text)
+        self.assertIn("must not be marked `clean` solely", self.text)
+        self.assertIn("source inspection,\n     builds, or unit tests", self.text)
+
+    def test_u_agents_review_requires_run_scoped_tmux_targets(self):
+        self.assertIn("run-scoped tmux naming contract", self.text)
+        self.assertIn("derive a target prefix from this\n     issue/worktree", self.text)
+        self.assertIn("exact tmux window-id targets", self.text)
+        self.assertIn("docs/review/tmux-targets.env", self.text)
+        self.assertIn("prompt\n     delivery, polling, and cleanup", self.text)
+        self.assertIn("Static reviewer window names are not\n     allowed", self.text)
+        self.assertIn("multiple issue reviews can run concurrently", self.text)
+
 
 class TestPmPromptRenders(unittest.TestCase):
     """The whole template must still render: every {placeholder} added for the
@@ -97,6 +133,51 @@ class TestPmPromptRenders(unittest.TestCase):
             f"{expected_root}/skills/implementation-preflight/SKILL.md",
             rendered,
         )
+
+
+class TestLegacyReviewDiffCommand(unittest.TestCase):
+    def setUp(self):
+        self.text = LEGACY_REVIEW_DIFF_PROMPT.read_text(encoding="utf-8")
+
+    def test_delegates_to_plural_review_diffs(self):
+        self.assertIn("Legacy alias for review-diffs", self.text)
+        self.assertIn("delegates to the plural manager-led\n`review-diffs`", self.text)
+        self.assertIn("/Users/yutaaoki/dotfiles/skills/review-diffs/SKILL.md", self.text)
+        self.assertIn("Do not perform the old source-only review", self.text)
+        self.assertIn("docs/review/", self.text)
+        self.assertIn("UI screenshot paths", self.text)
+        self.assertNotIn("Score (up to 100)", self.text)
+        self.assertNotIn("Create/update docs/review.md", self.text)
+
+
+class TestReviewDiffsSkillTmuxTargets(unittest.TestCase):
+    def setUp(self):
+        self.text = REVIEW_DIFFS_SKILL.read_text(encoding="utf-8")
+
+    def test_uses_run_scoped_exact_tmux_targets(self):
+        self.assertIn("tmux allows duplicate window names", self.text)
+        self.assertIn("record the exact window id", self.text)
+        self.assertIn("-P -F '#{window_id}'", self.text)
+        self.assertIn("docs/review/tmux-targets.env", self.text)
+        self.assertIn('"${review_tag}-req"', self.text)
+        self.assertIn('tmux capture-pane -p -t "$REQ_WIN"', self.text)
+        self.assertIn('tmux kill-window -t "$REQ_WIN"', self.text)
+        self.assertIn("Never poll by a window name", self.text)
+
+    def test_no_static_tmux_targets_in_examples(self):
+        forbidden = [
+            "tmux new-window -n review-req",
+            "tmux new-window -n review-correctness",
+            "tmux new-window -n review-security",
+            "tmux new-window -n review-ui-visual",
+            "tmux capture-pane -p -t <window>",
+            "tmux kill-window -t review-req",
+            "tmux kill-window -t review-correctness",
+            "tmux kill-window -t review-security",
+            "tmux kill-window -t review-ui-visual",
+        ]
+        for needle in forbidden:
+            self.assertNotIn(needle, self.text)
 
 
 if __name__ == "__main__":

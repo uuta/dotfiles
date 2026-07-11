@@ -672,7 +672,7 @@ GitHub issue with status:ready
                 ├─ creates/reuses worktree + branch
                 ├─ organizes requirements from the issue
                 ├─ engineer pane implements
-                ├─ reviewer pane runs review-diff
+                ├─ reviewer pane runs review-diffs
                 ├─ fix loop bounded to 3 rounds
                 └─ opens review-ready PR with `Closes #N`
 
