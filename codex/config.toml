@@ -1,0 +1,147 @@
+hide_agent_reasoning = true
+network_access = true
+notify = [ "bash", "-lc", "afplay ~/Library/CloudStorage/Dropbox/20251126_zunda/zunda.wav" ]
+model = "gpt-5.6-sol"
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+model_reasoning_effort = "xhigh"
+web_search = "live"
+personality = "pragmatic"
+mcp_oauth_callback_port = 5555
+
+[projects."/Users/yutaaoki"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/surfingkeys-conf"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/dotfiles"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/.hammerspoon"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/gg-ai-agent-family"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/key-leap"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/social-analyzer"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/trander-rust"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/mu-muc-app-service"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/mu-muc-vscode"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/enliminal"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/enliminal/main"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/trander-flutter"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/trander-rust/main"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/trander-flutter/master"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/Library/CloudStorage/GoogleDrive-nightrage.metal66@gmail.com/My Drive/Private/業務委託契約書"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/LangUp"]
+trust_level = "trusted"
+
+[projects."/"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/u"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/trander-web"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/trander-web/main"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/resorn"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/resorn/main"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/test-html"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/SpeakRush"]
+trust_level = "trusted"
+
+[notice]
+hide_gpt5_1_migration_prompt = true
+"hide_gpt-5.1-codex-max_migration_prompt" = true
+
+[notice.model_migrations]
+"gpt-5.1-codex-max" = "gpt-5.2-codex"
+
+[mcp_servers.revenuecat]
+url = "https://mcp.revenuecat.ai/mcp"
+
+[mcp_servers.mobile-mcp]
+command = "npx"
+args = [ "@mobilenext/mobile-mcp@latest" ]
+
+[mcp_servers.pencil]
+command = "/Applications/Pencil.app/Contents/Resources/app.asar.unpacked/out/mcp-server-darwin-arm64"
+args = [ "--app", "desktop", "--agent", "codexCLI" ]
+
+[mcp_servers.drive]
+command = "npx"
+args = [
+  "-y",
+  "mcp-remote@latest",
+  "https://drivemcp.googleapis.com/mcp/v1",
+  "5555",
+  "--host",
+  "127.0.0.1",
+  "--static-oauth-client-metadata",
+  "{\"scope\":\"https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file\"}",
+  "--static-oauth-client-info",
+  "@/Users/yutaaoki/.codex/google-drive-mcp-oauth-client-info.json",
+]
+
+[plugins."github@openai-curated"]
+enabled = true
+
+[plugins."browser-use@openai-bundled"]
+enabled = true
+
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[tui.model_availability_nux]
+"gpt-5.5" = 4
+"gpt-5.6-sol" = 4
+
+[marketplaces.openai-bundled]
+last_updated = "2026-05-25T09:40:25Z"
+source_type = "local"
+source = "/Users/yutaaoki/.codex/.tmp/bundled-marketplaces/openai-bundled"
+
+[marketplaces.openai-primary-runtime]
+last_updated = "2026-05-25T09:41:18Z"
+source_type = "local"
+source = "/Users/yutaaoki/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
