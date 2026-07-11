@@ -89,8 +89,34 @@ watchdog recovery path apply. Do not open a PR from pane output alone.
    - When implementation is done, split off a reviewer pane titled `reviewer`.
    - Create/update `{review_result}` with `status: "running"` before sending
      the reviewer prompt.
-   - Ask the reviewer to run `review-diff` (or the project's equivalent) on
-     the diff between this branch and the default branch.
+   - Ask the reviewer to run the manager-led `review-diffs` skill on the diff
+     between this branch and the default branch. This is the mandatory local
+     review entry point before PR creation; do not substitute source-only
+     review, builds, or unit tests for it.
+   - The reviewer must run from the issue worktree `{worktree}` while it is on
+     the reviewed branch `{branch}`, so all review artifacts and screenshots
+     come from the local implementation under review.
+   - When review-diffs launches tmux reviewer windows, the reviewer must use
+     its run-scoped tmux naming contract: derive a target prefix from this
+     issue/worktree, record exact tmux window-id targets under
+     `docs/review/tmux-targets.env`, and use those exact targets for prompt
+     delivery, polling, and cleanup. Static reviewer window names are not
+     allowed in u_agents because multiple issue reviews can run concurrently
+     in the same tmux session.
+   - For web UI diffs (`*.tsx`, `*.jsx`, `*.vue`, `*.svelte`, `*.css`,
+     `*.scss`, `*.html`, page/component directories, or shared layout files),
+     the reviewer must include the `ui-visual` lens. It must render the local
+     reviewed implementation, not production, before the PR is created. For
+     desktop or shared-layout concerns, capture and inspect screenshots at
+     widths 900, 1180, 1440, and 1920.
+   - The reviewer output and the review-diffs manager pass must retain
+     screenshot paths, or an explicit verification/tooling gap if screenshots
+     could not be captured. The reviewer must carry those paths or gaps into
+     `{review_result}` under `verification`.
+   - A UI diff must not be marked `clean` solely from source inspection,
+     builds, or unit tests. If rendered UI verification is required but missing,
+     use `fix_required` or `blocked` with the concrete gap in `summary` and
+     `verification`.
    - Instruct the reviewer to write `{review_result}` with exactly one of
      `running`, `clean`, `fix_required`, or `blocked`; include `must_fix`,
      `optional`, `verification`, and `summary`.
