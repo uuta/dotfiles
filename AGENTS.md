@@ -18,4 +18,4 @@
 ## Project-local workflow docs
 
 - Keep repository-specific workflow/state rules close to their implementation.
-  For u_agents, read `u_agents/AGENTS.md` and `u_agents/db/README.md`.
+- `u_agents` moved to https://github.com/uuta/uuter.
