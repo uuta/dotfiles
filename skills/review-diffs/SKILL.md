@@ -504,14 +504,14 @@ Close the review windows when finished (only the exact ids you opened):
 
 ```bash
 # floor
-tmux kill-window -t "$REQ_WIN"
-tmux kill-window -t "$CORRECTNESS_WIN"
-tmux kill-window -t "$SECURITY_WIN"
+[ -n "${REQ_WIN:-}" ] && tmux kill-window -t "$REQ_WIN"
+[ -n "${CORRECTNESS_WIN:-}" ] && tmux kill-window -t "$CORRECTNESS_WIN"
+[ -n "${SECURITY_WIN:-}" ] && tmux kill-window -t "$SECURITY_WIN"
 
 # optional — include only if you opened it
-tmux kill-window -t "$RESILIENCE_WIN"
-tmux kill-window -t "$REUSE_WIN"
-tmux kill-window -t "$UI_VISUAL_WIN"
+[ -n "${RESILIENCE_WIN:-}" ] && tmux kill-window -t "$RESILIENCE_WIN"
+[ -n "${REUSE_WIN:-}" ] && tmux kill-window -t "$REUSE_WIN"
+[ -n "${UI_VISUAL_WIN:-}" ] && tmux kill-window -t "$UI_VISUAL_WIN"
 ```
 
 ## Standard review format

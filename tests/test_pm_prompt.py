@@ -142,7 +142,9 @@ class TestLegacyReviewDiffCommand(unittest.TestCase):
     def test_delegates_to_plural_review_diffs(self):
         self.assertIn("Legacy alias for review-diffs", self.text)
         self.assertIn("delegates to the plural manager-led\n`review-diffs`", self.text)
-        self.assertIn("/Users/yutaaoki/dotfiles/skills/review-diffs/SKILL.md", self.text)
+        self.assertIn("Invoke the installed `review-diffs` skill by name", self.text)
+        self.assertNotIn("/Users/yutaaoki/dotfiles", self.text)
+        self.assertNotIn("skills/review-diffs/SKILL.md", self.text)
         self.assertIn("Do not perform the old source-only review", self.text)
         self.assertIn("docs/review/", self.text)
         self.assertIn("UI screenshot paths", self.text)
@@ -161,7 +163,17 @@ class TestReviewDiffsSkillTmuxTargets(unittest.TestCase):
         self.assertIn("docs/review/tmux-targets.env", self.text)
         self.assertIn('"${review_tag}-req"', self.text)
         self.assertIn('tmux capture-pane -p -t "$REQ_WIN"', self.text)
-        self.assertIn('tmux kill-window -t "$REQ_WIN"', self.text)
+        for variable in [
+            "REQ_WIN",
+            "CORRECTNESS_WIN",
+            "SECURITY_WIN",
+            "RESILIENCE_WIN",
+            "REUSE_WIN",
+            "UI_VISUAL_WIN",
+        ]:
+            target = f"${variable}"
+            expected = f'[ -n "${{{variable}:-}}" ] && tmux kill-window -t "{target}"'
+            self.assertIn(expected, self.text)
         self.assertIn("Never poll by a window name", self.text)
 
     def test_no_static_tmux_targets_in_examples(self):
