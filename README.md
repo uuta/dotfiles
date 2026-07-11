@@ -57,11 +57,15 @@ graph LR
         A[agents/]
         S[skills/]
         H[hooks/]
+        D[codex/config.toml]
+        E[codex/AGENTS.md]
         C[.claude/settings.json]
     end
 
     subgraph "~/.codex"
         CP[prompts/]
+        CX[config.toml]
+        CG[AGENTS.md]
     end
 
     subgraph "~/.claude"
@@ -77,8 +81,12 @@ graph LR
     A -->|symlink| CA
     S -->|symlink| CS
     H -->|symlink| CH
+    D -->|symlink| CX
+    E -->|symlink| CG
     C -->|symlink| CJ
 ```
 
 - `./prompts.sh` symlinks prompts to both `~/.codex` and `~/.claude/commands`
+- `codex/config.toml` is the dotfiles-owned Codex user configuration
+- `codex/AGENTS.md` is the dotfiles-owned global Codex guidance entrypoint
 - `.zshrc` ensures the managed symlinks exist for shared config and agent tooling

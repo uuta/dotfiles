@@ -362,7 +362,18 @@ export PATH="$(yarn global bin):$PATH"
 eval "$(gh completion -s zsh)"
 export PATH="/usr/local/opt/node@14/bin:$PATH"
 
-# symbolic link for Claude MCP servers
+# symbolic link for Codex settings
+if [ -f "$HOME/dotfiles/codex/config.toml" ]; then
+    mkdir -p "$HOME/.codex"
+    ln -sf "$HOME/dotfiles/codex/config.toml" "$HOME/.codex/config.toml"
+fi
+
+if [ -f "$HOME/dotfiles/codex/AGENTS.md" ]; then
+    mkdir -p "$HOME/.codex"
+    ln -sf "$HOME/dotfiles/codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
+fi
+
+# symbolic link for Claude settings
 if [ -f "$HOME/dotfiles/.claude/settings.json" ]; then
     mkdir -p "$HOME/.claude"
     ln -sf "$HOME/dotfiles/.claude/settings.json" "$HOME/.claude/settings.json"
