@@ -184,7 +184,7 @@ alias cdd='cd ~/dotfiles'
 ## WezTerm
 alias cddw='cd ~/dotfiles/.config/WezTerm'
 ## u_agents
-alias cddu='cd ~/dotfiles/u_agents'
+alias cddu='cd ~/uuter/main/u_agents'
 
 ## Surfingkeys-conf
 alias cdm='cd ~/surfingkeys-conf'
@@ -327,9 +327,10 @@ export CPPFLAGS="-I/usr/local/opt/zlib/include"
 source "$HOME/.openai_key.zsh"
 
 # u-agents runner env (U_AGENTS_DATABASE_URL / RUNNER_ID / MACHINE_ID).
-# Copy .u_agents_env.zsh.template to ~/.u_agents_env.zsh and fill it in so the
-# tmux PM pane and launcher/watchdog share the same runtime identity. Guarded
-# so shells without the local file are unaffected. See docs/u-agents.md.
+# Copy ~/uuter/main/.u_agents_env.zsh.template to ~/.u_agents_env.zsh and fill
+# it in so the tmux PM pane and launcher/watchdog share the same runtime
+# identity. Guarded so shells without the local file are unaffected. See
+# https://github.com/uuta/uuter.
 [[ -f "$HOME/.u_agents_env.zsh" ]] && source "$HOME/.u_agents_env.zsh"
 
 # u-agents expects each workspace to expose a main checkout at

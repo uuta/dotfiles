@@ -13,11 +13,3 @@ test/node_modules/
 .worktrees/
 __pycache__/
 *.pyc
-
-# Local-only u-agents runner config/state (example is tracked)
-u_agents/config/repositories.yml
-u_agents/config/repositories.yaml
-u_agents/state/
-# Real runner env with secrets lives in $HOME; never commit it even if copied
-# into the repo by mistake (the .template is tracked).
-.u_agents_env.zsh
