@@ -34,12 +34,13 @@ For the same reason, reviewer instructions and the UI/visual backends must be se
 2. Create `docs/review/`, capture the diff, and classify the touched surfaces
 3. Select perspectives from the catalog (floor + diff-specific optional)
 4. Prepare the per-perspective output files
-5. Launch parallel tmux reviewers for the selected perspectives
-6. Give every reviewer the same contract plus one perspective lens
-7. Poll until all reviewers finish
-8. Perform a manager pass against the contract and the diff
-9. Summarize findings to the user
-10. Clean up review windows
+5. Choose run-scoped tmux names and exact window targets
+6. Launch parallel tmux reviewers for the selected perspectives
+7. Give every reviewer the same contract plus one perspective lens
+8. Poll until all reviewers finish
+9. Perform a manager pass against the contract and the diff
+10. Summarize findings to the user
+11. Clean up review windows
 
 ## 1. Build the review contract
 
@@ -177,15 +178,40 @@ Create one output file per selected perspective, e.g.:
 - `docs/review/ui-visual.md` (optional, if selected)
 - `docs/review/manager.md` (manager pass)
 
-## 5. Launch parallel tmux reviewers
+## 5. Choose run-scoped tmux names and exact window targets
+
+Multiple review runs may share one tmux session. tmux allows duplicate window names, and
+name-based targets resolve to one matching window, so static targets are unsafe. Before
+launching reviewers, derive a run-scoped tag and record the exact window id returned by
+`tmux new-window`. Use those exact ids for prompt delivery, polling, and cleanup.
+
+The tag should be stable enough to recognize the run and unique enough to avoid collisions:
+
+- If the caller supplies an issue/run identifier, include it.
+- Otherwise derive it from the current worktree basename plus the shell PID.
+- Keep it short and shell-safe: lowercase letters/digits plus `-`.
+
+Example:
+
+```bash
+review_slug="$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-24)"
+review_tag="review-${review_slug:-run}-$$"
+printf 'review_tag=%s\n' "$review_tag" > docs/review/tmux-targets.env
+```
+
+When this workflow is invoked by an issue-runner such as u_agents, use the issue worktree or
+branch identity in `review_tag` and keep the targets issue-scoped. Do not use static names
+that can collide across concurrent issue reviews.
+
+## 6. Launch parallel tmux reviewers
 
 Create one dedicated tmux window per selected perspective. Each runs a coding-agent CLI (here `claude`) with permissions skipped for autonomy.
 
 Model / effort policy:
 
-- `review-req` uses `--model opus --effort high`. Requirement compliance needs the strongest judgment.
+- The requirements lens uses `--model opus --effort high`. Requirement compliance needs the strongest judgment.
 - Other specialist reviewers use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient default for parallel work.
-- The manager pass (step 8) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / high when possible.
+- The manager pass (step 9) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / high when possible.
 
 ### Engine policy
 
@@ -200,27 +226,32 @@ Reviewers are engine-agnostic (see "Vendor-neutral by design"). Pick the engine 
 
 Record the engine chosen per lens at the top of `docs/review/manager.md`, next to the selected perspectives.
 
-Launch the floor windows always, plus one window per selected optional lens:
+Launch the floor windows always, plus one window per selected optional lens. Capture the
+returned window id with `-P -F '#{window_id}'` and append it to `docs/review/tmux-targets.env`:
 
 ```bash
 # floor
-tmux new-window -n review-req -c "$(pwd)" 'claude --dangerously-skip-permissions --model opus --effort high'
-tmux new-window -n review-correctness -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
-tmux new-window -n review-security -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
+REQ_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-req" -c "$(pwd)" 'claude --dangerously-skip-permissions --model opus --effort high')
+CORRECTNESS_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-correctness" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
+SECURITY_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-security" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
+printf 'requirements=%s\ncorrectness=%s\nsecurity=%s\n' "$REQ_WIN" "$CORRECTNESS_WIN" "$SECURITY_WIN" >> docs/review/tmux-targets.env
 
 # optional — only the ones selected in step 3; run ui-visual only after the trust-boundary caveat above is satisfied
-tmux new-window -n review-resilience -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
-tmux new-window -n review-reuse      -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
-tmux new-window -n review-ui-visual  -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high'
+RESILIENCE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-resilience" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
+REUSE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-reuse" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
+UI_VISUAL_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-ui-visual" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
+printf 'resilience=%s\nreuse=%s\nui_visual=%s\n' "$RESILIENCE_WIN" "$REUSE_WIN" "$UI_VISUAL_WIN" >> docs/review/tmux-targets.env
 ```
 
 To run a lens on a different engine, swap that window's launch command (see **Engine policy** above) — the rest of the flow is unchanged. Cross-engine coverage (e.g. `correctness` on both Claude and codex) uses two windows for the one lens; the manager pass merges their findings.
 
-Wait for each window to become ready by polling `tmux capture-pane` until the idle prompt appears.
+Wait for each window to become ready by polling `tmux capture-pane -t "$REQ_WIN"` (and
+the other recorded window ids) until the idle prompt appears. Never poll by a window name.
 
-## 6. Give every reviewer the same contract
+## 7. Give every reviewer the same contract
 
-Use `load-buffer` -> `paste-buffer` -> `C-m` for each window. Every prompt must include:
+Use `load-buffer` -> `paste-buffer` -> `C-m` for each exact window id recorded in
+`docs/review/tmux-targets.env`. Every prompt must include:
 
 - `Read docs/review/contract.md first`
 - `Read docs/review/diff.txt second`
@@ -407,12 +438,12 @@ paths as evidence. If there are no findings, say "No issues found."
 
 Other optional lenses (`data-migration`, `concurrency`, `i18n-a11y`, `api-contract`) follow the same shape: read the contract, review only through the named lens, write `docs/review/<lens>.md` in the standard format. Keep their prompts narrow and specific to the risk that triggered them.
 
-## 7. Poll until all reviewers finish
+## 8. Poll until all reviewers finish
 
 For each window, poll every 5 seconds:
 
 ```bash
-tmux capture-pane -p -t <window> -S -50
+tmux capture-pane -p -t "$REQ_WIN" -S -50
 ```
 
 A reviewer is done when:
@@ -422,7 +453,7 @@ A reviewer is done when:
 
 Use a bounded wait, not an infinite poll. If a window is not done after the local timeout (for example, 20 minutes), capture a larger pane tail and diagnose before continuing. If the pane shows a launch error, an unexpected interactive prompt, or an idle shell/agent prompt with no output file (including a codex window that failed to launch and looks idle), kill and relaunch that lens or escalate the verification gap to the user.
 
-## 8. Manager pass is mandatory
+## 9. Manager pass is mandatory
 
 After the tmux reviewers finish, do not immediately relay their output.
 
@@ -452,7 +483,7 @@ The manager pass must answer:
 - Are any reviewers flagging problems that are outside the agreed scope?
 - For screenshot-driven UI, did the implementation preserve the visual contract and avoid unauthorized baseline/threshold/selector changes? Are golden failures true regressions or intended changes, and is any touched widget missing golden coverage?
 
-## 9. Summarize to the user
+## 10. Summarize to the user
 
 Findings come first.
 
@@ -467,20 +498,20 @@ When responding:
 
 Do not simply aggregate reviewer counts. The output should reflect the manager's judgment.
 
-## 10. Cleanup
+## 11. Cleanup
 
-Close the review windows when finished (only the ones you opened):
+Close the review windows when finished (only the exact ids you opened):
 
 ```bash
 # floor
-tmux kill-window -t review-req
-tmux kill-window -t review-correctness
-tmux kill-window -t review-security
+[ -n "${REQ_WIN:-}" ] && tmux kill-window -t "$REQ_WIN"
+[ -n "${CORRECTNESS_WIN:-}" ] && tmux kill-window -t "$CORRECTNESS_WIN"
+[ -n "${SECURITY_WIN:-}" ] && tmux kill-window -t "$SECURITY_WIN"
 
 # optional — include only if you opened it
-tmux kill-window -t review-resilience
-tmux kill-window -t review-reuse
-tmux kill-window -t review-ui-visual
+[ -n "${RESILIENCE_WIN:-}" ] && tmux kill-window -t "$RESILIENCE_WIN"
+[ -n "${REUSE_WIN:-}" ] && tmux kill-window -t "$REUSE_WIN"
+[ -n "${UI_VISUAL_WIN:-}" ] && tmux kill-window -t "$UI_VISUAL_WIN"
 ```
 
 ## Standard review format

@@ -1,21 +1,13 @@
 ---
-description: Review code based on diffs
+description: Legacy alias for review-diffs
 ---
 
-## Objective
+This legacy singular command delegates to the plural manager-led
+`review-diffs` workflow. Do not perform the old source-only review and do not
+create `docs/review.md`.
 
-- Read diffs with `git diff` commands, and review code
+Invoke the installed `review-diffs` skill by name.
 
-## Todo
-
-- Read diffs with `git diff` commands
-- Review diffs
-- Create/update docs/review.md in the current directory that you're working on
-
-## What docs/review.md should contain
-
-- Score (up to 100)
-- Short summary
-- Critical issue
-- Potentially performance issue
-- potential bug
+Run that workflow in the current worktree against the requested diff. Preserve
+its required artifacts under `docs/review/`, including the manager pass and any
+UI screenshot paths or explicit verification/tooling gaps.
