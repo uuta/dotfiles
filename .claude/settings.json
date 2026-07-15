@@ -3,11 +3,7 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "allow": [
-      "mcp__codex__codex",
-      "mcp__codex__codex-reply",
-      "mcp__pencil"
-    ],
+    "allow": ["mcp__codex__codex", "mcp__codex__codex-reply", "mcp__pencil"],
     "deny": []
   },
   "hooks": {
@@ -173,8 +169,8 @@
     ]
   },
   "enabledPlugins": {
-    "claude-mem@thedotmack": true,
-    "figma@claude-plugins-official": true
+    "claude-mem@thedotmack": false,
+    "figma@claude-plugins-official": false
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
