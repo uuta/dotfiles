@@ -1,0 +1,8 @@
+{
+  "trustedformulae": [
+    "discoteq/discoteq/flock",
+    "go-task/tap/go-task",
+    "leoafarias/fvm/fvm",
+    "nat-n/poethepoet/poethepoet"
+  ]
+}
