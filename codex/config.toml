@@ -4,7 +4,7 @@ notify = [ "bash", "-lc", "afplay ~/Library/CloudStorage/Dropbox/20251126_zunda/
 model = "gpt-5.6-sol"
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 web_search = "live"
 personality = "pragmatic"
 mcp_oauth_callback_port = 5555
@@ -82,6 +82,12 @@ trust_level = "trusted"
 trust_level = "trusted"
 
 [projects."/Users/yutaaoki/SpeakRush"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/uuter"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/uuter/main"]
 trust_level = "trusted"
 
 [notice]
