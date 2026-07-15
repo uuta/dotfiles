@@ -1,0 +1,16 @@
+name: AI Review
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review, review_requested]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  review:
+    uses: uuta/github-workflows/.github/workflows/pr-review.yml@a2e0f4d8aa6ca1492f08798cd80bbfc8d3dc0922
+    secrets:
+      groq_api_key: ${{ secrets.GROQ_API_KEY }}
