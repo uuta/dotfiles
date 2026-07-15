@@ -205,24 +205,24 @@ that can collide across concurrent issue reviews.
 
 ## 6. Launch parallel tmux reviewers
 
-Create one dedicated tmux window per selected perspective. Each runs a coding-agent CLI (here `claude`) with permissions skipped for autonomy.
+Create one dedicated tmux window per selected perspective. Each runs a coding-agent CLI (`codex` for pure-code lenses by default; `claude` for Claude-only lenses) with permissions skipped for autonomy.
 
 Model / effort policy:
 
-- The requirements lens uses `--model opus --effort high`. Requirement compliance needs the strongest judgment.
-- Other specialist reviewers use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient default for parallel work.
+- The requirements lens always runs on Claude with `--model opus --effort high`. Requirement compliance needs the strongest judgment.
+- When another specialist lens runs on Claude (for example, as a fallback or for dual-engine coverage), use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient Claude default for parallel work.
 - The manager pass (step 9) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / high when possible.
 
 ### Engine policy
 
 Reviewers are engine-agnostic (see "Vendor-neutral by design"). Pick the engine per lens:
 
-- **Default is Claude.** An all-Claude run is the simplest and always correct — start here.
-- **Vision-required lenses stay on Claude.** `ui-visual` reads golden-diff / screenshot PNGs, and the manager reads them too during UI confirmation. Never route these to an engine that cannot view local images.
+- **Default pure-code lenses to codex.** This set is `correctness`, `security`, `reuse`, `resilience`, `concurrency`, `api-contract`, and `data-migration`. Launch codex using the full-autonomy policy described in "Vendor-neutral by design" above, then inject the same lens prompt via tmux.
+- **Claude-only lenses never run on codex.** `requirements` is the judgment lens and needs the strongest model — Claude opus. `ui-visual` must view local screenshot / golden-diff images and needs design judgment; codex is weak at design. `i18n-a11y` is design-adjacent because it reviews user-facing strings and interactive UI.
 - **Execution lenses need a stronger trust boundary.** `ui-visual` may run the reviewed branch's own code/dependencies (`flutter pub get`, `flutter test`, dev server, `npx playwright`). Run those steps only after the diff is already vetted, or inside an isolated/ephemeral worktree with no ambient credentials/network. Do not treat them like the read-only analytical lenses launched under blanket permission-skipped/full-autonomy settings.
-- **`requirements` stays on the strongest model** (opus) — it is the judgment lens.
-- **Pure-code lenses MAY run on codex** (`correctness`, `security`, `reuse`, `resilience`, and code-only optionals like `concurrency` / `api-contract`). Mixing engines here is a *quality* lever, not just cost: different models miss different bugs, so running e.g. `correctness` on both Claude and codex and merging in the manager pass widens coverage. Launch codex using the full-autonomy policy described in "Vendor-neutral by design" above, then inject the same lens prompt via tmux.
-- **Tradeoff:** cross-engine runs add orchestration overhead (two CLIs, separate prompt injection). Default to all-Claude; opt into codex on high-stakes diffs where model diversity is worth it, or to offload cost.
+- **All-Claude remains a valid fallback** when codex is unavailable or a codex window fails to launch.
+- **Dual-engine coverage remains the quality lever for high-stakes diffs.** Different models miss different bugs, so run the same pure-code lens on both codex and Claude and merge their findings in the manager pass when model diversity is worth the extra cost.
+- **Tradeoff:** codex-by-default for pure-code lenses saves Claude tokens, while cross-engine runs add orchestration overhead (two CLIs, separate prompt injection).
 
 Record the engine chosen per lens at the top of `docs/review/manager.md`, next to the selected perspectives.
 
@@ -232,18 +232,18 @@ returned window id with `-P -F '#{window_id}'` and append it to `docs/review/tmu
 ```bash
 # floor
 REQ_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-req" -c "$(pwd)" 'claude --dangerously-skip-permissions --model opus --effort high')
-CORRECTNESS_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-correctness" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
-SECURITY_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-security" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
+CORRECTNESS_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-correctness" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
+SECURITY_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-security" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
 printf 'requirements=%s\ncorrectness=%s\nsecurity=%s\n' "$REQ_WIN" "$CORRECTNESS_WIN" "$SECURITY_WIN" >> docs/review/tmux-targets.env
 
 # optional — only the ones selected in step 3; run ui-visual only after the trust-boundary caveat above is satisfied
-RESILIENCE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-resilience" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
-REUSE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-reuse" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
+RESILIENCE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-resilience" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
+REUSE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-reuse" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
 UI_VISUAL_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-ui-visual" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
 printf 'resilience=%s\nreuse=%s\nui_visual=%s\n' "$RESILIENCE_WIN" "$REUSE_WIN" "$UI_VISUAL_WIN" >> docs/review/tmux-targets.env
 ```
 
-To run a lens on a different engine, swap that window's launch command (see **Engine policy** above) — the rest of the flow is unchanged. Cross-engine coverage (e.g. `correctness` on both Claude and codex) uses two windows for the one lens; the manager pass merges their findings.
+To put a pure-code lens back on Claude, swap that window's launch command (see **Engine policy** above) — the rest of the flow is unchanged. To add dual-engine coverage (e.g. `correctness` on both codex and Claude), use two windows for the one lens; the manager pass merges their findings.
 
 Wait for each window to become ready by polling `tmux capture-pane -t "$REQ_WIN"` (and
 the other recorded window ids) until the idle prompt appears. Never poll by a window name.
