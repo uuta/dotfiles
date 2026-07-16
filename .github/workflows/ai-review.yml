@@ -11,6 +11,6 @@ permissions:
 
 jobs:
   review:
-    uses: uuta/github-workflows/.github/workflows/pr-review.yml@a2e0f4d8aa6ca1492f08798cd80bbfc8d3dc0922
+    uses: uuta/github-workflows/.github/workflows/pr-review.yml@349ea25effcdcddd767b8bb5b303ed41642b5b65
     secrets:
-      groq_api_key: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
