@@ -11,6 +11,6 @@ permissions:
 
 jobs:
   review:
-    uses: uuta/github-workflows/.github/workflows/pr-review.yml@349ea25effcdcddd767b8bb5b303ed41642b5b65
+    uses: uuta/github-workflows/.github/workflows/pr-review.yml@main
     secrets:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
