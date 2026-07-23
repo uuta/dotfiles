@@ -83,7 +83,7 @@ if [[ $(command -v eza) ]]; then
   alias ls='eza --icons --git'
   alias lt='eza -T -L 3 -a -I "node_modules|.git|.cache" --icons'
   alias ltl='eza -T -L 3 -a -I "node_modules|.git|.cache" -l --icons'
-  alias ll='eza -l -aa -h -@ -m --icons --git --time-style=long-iso --color=automatic --group-directories-first'
+  alias ll='eza -l -aa -h -@ -m --icons --git --time-style=long-iso --color=auto --group-directories-first'
 fi
 
 # git diff function
