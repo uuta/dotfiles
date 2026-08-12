@@ -307,6 +307,10 @@ export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=46;34:cd=43;34:su=41;30:sg=46
 
 export XDG_CONFIG_HOME=~/dotfiles/.config
 
+if [ -L "$XDG_CONFIG_HOME/settings" ] || [ ! -e "$XDG_CONFIG_HOME/settings" ]; then
+    ln -sfn "$XDG_CONFIG_HOME/flutter/settings" "$XDG_CONFIG_HOME/settings"
+fi
+
 if [ -L "$HOME/.zshrc" ] || [ ! -e "$HOME/.zshrc" ]; then
     ln -sfn "$HOME/dotfiles/.zshrc" "$HOME/.zshrc"
 fi

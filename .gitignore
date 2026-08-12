@@ -3,6 +3,8 @@
 **/apps.json
 
 # Runtime-generated config (not dotfiles)
+.config/settings
+.config/tool_state
 .config/gcloud/
 .config/.config
 .config/.copilot/
