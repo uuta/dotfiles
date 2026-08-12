@@ -3,9 +3,10 @@
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
-    "allow": ["mcp__codex__codex", "mcp__codex__codex-reply", "mcp__pencil"],
+    "allow": ["mcp__codex__codex", "mcp__codex__codex-reply"],
     "deny": []
   },
+  "model": "claude-fable-5[1m]",
   "hooks": {
     "Notification": [
       {
@@ -46,25 +47,7 @@
         ]
       }
     ],
-    "TaskCreated": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "afplay ~/dotfiles/public/start.wav"
-          }
-        ]
-      }
-    ],
     "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "afplay ~/dotfiles/public/start.wav"
-          }
-        ]
-      },
       {
         "hooks": [
           {
@@ -173,7 +156,7 @@
     "figma@claude-plugins-official": false
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
   "tui": "fullscreen",
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark-daltonized"
