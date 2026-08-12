@@ -3,6 +3,8 @@
 **/apps.json
 
 # Runtime-generated config (not dotfiles)
+.config/.wrangler/
+.config/swiftpm/
 .config/settings
 .config/tool_state
 .config/gcloud/
@@ -11,6 +13,7 @@
 .config/configstore/
 .config/github-copilot/
 .config/karabiner/automatic_backups/
+.playwright-mcp/
 test/node_modules/
 .worktrees/
 __pycache__/

@@ -405,10 +405,6 @@ if [ ! -e "$HOME/.agents/skills" ]; then
     ln -s "$HOME/dotfiles/skills" "$HOME/.agents/skills"
 fi
 
-if [ ! -e "$HOME/.mcp.json" ]; then
-    ln -sf "$HOME/dotfiles/.mcp.json" "$HOME/.mcp.json"
-fi
-
 # Git diff highlight
 export PATH="$PATH:/opt/homebrew/share/git-core/contrib/diff-highlight"
 ### End of Zinit's installer chunk
