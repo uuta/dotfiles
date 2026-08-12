@@ -326,6 +326,9 @@ export CPPFLAGS="-I/usr/local/opt/zlib/include"
 # ChatGPT
 source "$HOME/.openai_key.zsh"
 
+# eBay API keys (EBAY_CLIENT_ID / EBAY_CLIENT_SECRET) for the ebay MCP server
+[[ -f "$HOME/.ebay_keys.zsh" ]] && source "$HOME/.ebay_keys.zsh"
+
 # u-agents runner env (U_AGENTS_DATABASE_URL / RUNNER_ID / MACHINE_ID).
 # Copy ~/uuter/main/.u_agents_env.zsh.template to ~/.u_agents_env.zsh and fill
 # it in so the tmux PM pane and launcher/watchdog share the same runtime
@@ -503,6 +506,15 @@ export PATH="/Users/yutaaoki/.codeium/windsurf/bin:$PATH"
 
 # alias claude="/Users/yutaaoki/.claude/local/claude"
 export PATH="$HOME/.local/bin:$PATH"
+
+# tmux window cleanup command
+if [ -f "$HOME/dotfiles/tmux-prune-windows.sh" ]; then
+    mkdir -p "$HOME/.local/bin"
+    if [ -L "$HOME/.local/bin/tmux-prune-windows" ] || [ ! -e "$HOME/.local/bin/tmux-prune-windows" ]; then
+        ln -sfn "$HOME/dotfiles/tmux-prune-windows.sh" "$HOME/.local/bin/tmux-prune-windows"
+    fi
+fi
+
 export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
 
 # Added by Antigravity
