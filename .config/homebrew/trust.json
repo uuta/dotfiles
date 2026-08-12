@@ -4,5 +4,8 @@
     "go-task/tap/go-task",
     "leoafarias/fvm/fvm",
     "nat-n/poethepoet/poethepoet"
+  ],
+  "trustedcasks": [
+    "https://github.com/wezterm/homebrew-wezterm.git/wezterm"
   ]
 }
