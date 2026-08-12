@@ -1,6 +1,5 @@
 hide_agent_reasoning = true
 network_access = true
-notify = [ "bash", "-lc", "afplay ~/Library/CloudStorage/Dropbox/20251126_zunda/zunda.wav" ]
 model = "gpt-5.6-sol"
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
@@ -90,6 +89,21 @@ trust_level = "trusted"
 [projects."/Users/yutaaoki/uuter/main"]
 trust_level = "trusted"
 
+[projects."/Users/yutaaoki/github-workflows/main"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/astro-blog"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/github-workflows"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/inventory"]
+trust_level = "trusted"
+
+[projects."/Users/yutaaoki/SpeakGain"]
+trust_level = "trusted"
+
 [notice]
 hide_gpt5_1_migration_prompt = true
 "hide_gpt-5.1-codex-max_migration_prompt" = true
@@ -103,10 +117,6 @@ url = "https://mcp.revenuecat.ai/mcp"
 [mcp_servers.mobile-mcp]
 command = "npx"
 args = [ "@mobilenext/mobile-mcp@latest" ]
-
-[mcp_servers.pencil]
-command = "/Applications/Pencil.app/Contents/Resources/app.asar.unpacked/out/mcp-server-darwin-arm64"
-args = [ "--app", "desktop", "--agent", "codexCLI" ]
 
 [mcp_servers.drive]
 command = "npx"
