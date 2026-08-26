@@ -209,9 +209,11 @@ Create one dedicated tmux window per selected perspective. Each runs a coding-ag
 
 Model / effort policy:
 
-- The requirements lens always runs on Claude with `--model opus --effort high`. Requirement compliance needs the strongest judgment.
-- When another specialist lens runs on Claude (for example, as a fallback or for dual-engine coverage), use `--model sonnet --effort high`. Each has a narrow lens, so sonnet-high is the cost-efficient Claude default for parallel work.
-- The manager pass (step 9) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / high when possible.
+- The requirements lens runs on Claude with `--model opus --effort medium`. It keeps the strongest judgment model while avoiding high-effort latency on every review round.
+- Pure-code lenses use Codex `gpt-5.6-sol`: `correctness`, `security`, `concurrency`, `api-contract`, and `data-migration` use medium effort; `resilience` and `reuse` use low effort.
+- When another specialist lens runs on Claude (for example, as a fallback or for dual-engine coverage), use `--model sonnet --effort medium`. Each has a narrow lens, so sonnet-medium is the cost-efficient Claude default for parallel work.
+- Keep `ui-visual` on Claude sonnet/high because rendered visual judgment is the reason that lens is Claude-only.
+- The manager pass (step 9) is run serially by the current session and inherits whatever model / effort the caller is using. Prefer running the skill itself under opus / medium when possible.
 
 ### Engine policy
 
@@ -231,14 +233,14 @@ returned window id with `-P -F '#{window_id}'` and append it to `docs/review/tmu
 
 ```bash
 # floor
-REQ_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-req" -c "$(pwd)" 'claude --dangerously-skip-permissions --model opus --effort high')
-CORRECTNESS_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-correctness" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
-SECURITY_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-security" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
+REQ_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-req" -c "$(pwd)" 'claude --dangerously-skip-permissions --model opus --effort medium')
+CORRECTNESS_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-correctness" -c "$(pwd)" 'codex -m gpt-5.6-sol -c model_reasoning_effort="medium" --dangerously-bypass-approvals-and-sandbox')
+SECURITY_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-security" -c "$(pwd)" 'codex -m gpt-5.6-sol -c model_reasoning_effort="medium" --dangerously-bypass-approvals-and-sandbox')
 printf 'requirements=%s\ncorrectness=%s\nsecurity=%s\n' "$REQ_WIN" "$CORRECTNESS_WIN" "$SECURITY_WIN" >> docs/review/tmux-targets.env
 
 # optional — only the ones selected in step 3; run ui-visual only after the trust-boundary caveat above is satisfied
-RESILIENCE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-resilience" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
-REUSE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-reuse" -c "$(pwd)" 'codex --dangerously-bypass-approvals-and-sandbox')
+RESILIENCE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-resilience" -c "$(pwd)" 'codex -m gpt-5.6-sol -c model_reasoning_effort="low" --dangerously-bypass-approvals-and-sandbox')
+REUSE_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-reuse" -c "$(pwd)" 'codex -m gpt-5.6-sol -c model_reasoning_effort="low" --dangerously-bypass-approvals-and-sandbox')
 UI_VISUAL_WIN=$(tmux new-window -P -F '#{window_id}' -n "${review_tag}-ui-visual" -c "$(pwd)" 'claude --dangerously-skip-permissions --model sonnet --effort high')
 printf 'resilience=%s\nreuse=%s\nui_visual=%s\n' "$RESILIENCE_WIN" "$REUSE_WIN" "$UI_VISUAL_WIN" >> docs/review/tmux-targets.env
 ```
@@ -436,7 +438,7 @@ Write to docs/review/ui-visual.md in the standard review format, with screenshot
 paths as evidence. If there are no findings, say "No issues found."
 ```
 
-Other optional lenses (`data-migration`, `concurrency`, `i18n-a11y`, `api-contract`) follow the same shape: read the contract, review only through the named lens, write `docs/review/<lens>.md` in the standard format. Keep their prompts narrow and specific to the risk that triggered them.
+Other optional lenses (`data-migration`, `concurrency`, `i18n-a11y`, `api-contract`) follow the same shape: read the contract, review only through the named lens, write `docs/review/<lens>.md` in the standard format. Pin `data-migration`, `concurrency`, and `api-contract` to Codex `gpt-5.6-sol` with medium effort. Keep `i18n-a11y` on Claude sonnet/medium. Keep their prompts narrow and specific to the risk that triggered them.
 
 ## 8. Poll until all reviewers finish
 
