@@ -1,0 +1,10 @@
+{
+  "name": "browser-interactive-runtime",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pinned browserless Playwright control library for browser-interactive",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.62.0"
+  }
+}

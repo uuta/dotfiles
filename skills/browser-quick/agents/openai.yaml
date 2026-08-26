@@ -1,0 +1,4 @@
+interface:
+  display_name: "Browser Quick"
+  short_description: "Fetch or render a page as one result"
+  default_prompt: "Use $browser-quick to fetch or render this page as a one-shot result."

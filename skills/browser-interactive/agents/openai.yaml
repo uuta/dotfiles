@@ -1,0 +1,4 @@
+interface:
+  display_name: "Browser Interactive"
+  short_description: "Control and verify an interactive browser flow"
+  default_prompt: "Use $browser-interactive to automate and verify this interactive browser workflow."
