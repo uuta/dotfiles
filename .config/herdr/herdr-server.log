@@ -1,0 +1,460 @@
+2026-08-28T10:56:41.164836Z  INFO herdr::platform::macos: raised server file descriptor soft limit previous=4352 target=8192
+2026-08-28T10:56:41.165335Z  INFO herdr::api::server: api server listening path=/Users/yutaaoki/dotfiles/.config/herdr/herdr.sock
+2026-08-28T10:56:41.167214Z  INFO herdr::app: using pane scrollback configuration pane_scrollback_limit_bytes=10000000
+2026-08-28T10:56:41.187232Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T10:56:41.192773Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=1 rows=40 cols=120 scrollback_limit_bytes=10000000
+2026-08-28T10:56:41.196201Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=1 pid=43194
+2026-08-28T10:56:41.198055Z  INFO herdr::logging: workspace created event="workspace.create" subsystem="workspace" outcome="ok" workspace_id="w1" pane_id=1
+2026-08-28T10:56:41.198082Z  INFO herdr::logging: workspace focused event="workspace.focus" subsystem="workspace" outcome="ok" workspace_id="w1"
+2026-08-28T10:56:41.198108Z  INFO herdr::logging: tab focused event="tab.focus" subsystem="tab" outcome="ok" workspace_id="w1" tab_id="w1:t1"
+2026-08-28T10:56:41.198134Z  INFO herdr::server::headless: created startup workspace cwd=/Users/yutaaoki/SpeakGain/.worktrees/164
+2026-08-28T10:56:41.198236Z  INFO herdr::server::headless: client protocol socket listening path=/Users/yutaaoki/dotfiles/.config/herdr/herdr-client.sock
+2026-08-28T10:56:41.198251Z  INFO herdr::server::headless: herdr server started api_socket=/Users/yutaaoki/dotfiles/.config/herdr/herdr.sock client_socket=/Users/yutaaoki/dotfiles/.config/herdr/herdr-client.sock
+2026-08-28T10:56:41.198549Z  INFO herdr::logging: herdr starting event="app.startup" subsystem="server" outcome="started" pid=43088
+2026-08-28T10:56:41.452174Z  INFO herdr::server::headless: client connected client_id=2 cols=239 rows=56 cell_width_px=0 cell_height_px=0 render_encoding=SemanticFrame
+2026-08-28T10:56:46.204860Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-08-28T10:56:58.482975Z  INFO herdr::server::headless: client detach requested via keybind client_id=2
+2026-08-28T10:56:58.484579Z  INFO herdr::server::headless: client disconnected client_id=2
+2026-08-28T10:57:06.559171Z  INFO herdr::server::headless: client connected client_id=4 cols=239 rows=56 cell_width_px=0 cell_height_px=0 render_encoding=SemanticFrame
+2026-08-28T10:57:09.575382Z  INFO herdr::server::headless: client resize client_id=4 cols=119 rows=56 cell_width_px=0 cell_height_px=0
+2026-08-28T10:57:13.505474Z  INFO herdr::server::headless: client resize client_id=4 cols=239 rows=56 cell_width_px=0 cell_height_px=0
+2026-08-28T10:57:15.261887Z  INFO herdr::server::headless: client resize client_id=4 cols=239 rows=27 cell_width_px=0 cell_height_px=0
+2026-08-28T10:57:19.121282Z  INFO herdr::server::headless: client resize client_id=4 cols=239 rows=56 cell_width_px=0 cell_height_px=0
+2026-08-28T10:57:30.467299Z  INFO herdr::server::headless: client detach requested via keybind client_id=4
+2026-08-28T10:57:30.469387Z  INFO herdr::server::headless: client disconnected client_id=4
+2026-08-28T11:00:32.563300Z  INFO herdr::server::headless: client connected client_id=6 cols=239 rows=56 cell_width_px=0 cell_height_px=0 render_encoding=SemanticFrame
+2026-08-28T11:00:34.003227Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=2 rows=55 cols=213 scrollback_limit_bytes=10000000
+2026-08-28T11:00:34.006559Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=2 pid=57079
+2026-08-28T11:00:34.006680Z  INFO herdr::logging: tab focused event="tab.focus" subsystem="tab" outcome="ok" workspace_id="w1" tab_id="w1:t1"
+2026-08-28T11:00:39.010539Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-08-28T11:14:30.031447Z  INFO herdr::server::headless: client detach requested via keybind client_id=6
+2026-08-28T11:14:30.033050Z  INFO herdr::server::headless: client disconnected client_id=6
+2026-08-28T12:00:07.621948Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T12:30:07.622744Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T13:00:07.624490Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T13:30:07.626096Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T14:00:07.628068Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T14:55:53.653980Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T15:25:53.655405Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T16:01:33.810219Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T16:31:33.812555Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T17:01:33.815899Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T17:31:33.819402Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T18:01:33.822091Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T18:31:33.823801Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T19:01:33.825415Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T19:31:33.828173Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T20:01:33.829064Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T20:31:33.830452Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T21:01:33.831399Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T21:31:33.833173Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T22:01:33.834773Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T22:10:09.349354Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:tab:create" method="tab.create" changes_ui=true
+2026-08-28T22:10:09.350121Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=3 rows=39 cols=47 scrollback_limit_bytes=10000000
+2026-08-28T22:10:09.360670Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=3 pid=11297
+2026-08-28T22:10:09.361070Z  INFO herdr::logging: tab renamed event="tab.rename" subsystem="tab" outcome="ok" workspace_id="w1" tab_id="w1:t2"
+2026-08-28T22:10:09.362192Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:tab:create" method="tab.create"
+2026-08-28T22:10:14.364187Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-08-28T22:10:15.099116Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:pane:split" method="pane.split" changes_ui=true
+2026-08-28T22:10:15.099670Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=4 rows=39 cols=47 scrollback_limit_bytes=10000000
+2026-08-28T22:10:15.106412Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=4 pid=12937
+2026-08-28T22:10:15.107197Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:pane:split" method="pane.split"
+2026-08-28T22:10:17.800854Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:pane:split" method="pane.split" changes_ui=true
+2026-08-28T22:10:17.800961Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=5 rows=39 cols=47 scrollback_limit_bytes=10000000
+2026-08-28T22:10:17.803528Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=5 pid=14379
+2026-08-28T22:10:17.803846Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:pane:split" method="pane.split"
+2026-08-28T22:10:22.805512Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-08-28T22:10:48.930348Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-28T22:10:48.931774Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-08-28T22:10:49.062352Z  INFO herdr::pane: agent changed pane=3 previous_agent=None agent=Some(Claude) process=claude pgid=Some(20335)
+2026-08-28T22:10:52.504558Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-28T22:10:52.505987Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-08-28T22:10:52.805136Z  INFO herdr::pane: agent changed pane=4 previous_agent=None agent=Some(Claude) process=claude pgid=Some(20586)
+2026-08-28T22:10:56.301153Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-28T22:10:56.306293Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-08-28T22:10:56.505464Z  INFO herdr::pane: agent changed pane=5 previous_agent=None agent=Some(Claude) process=claude pgid=Some(20817)
+2026-08-28T22:11:04.829595Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-08-28T22:11:37.267446Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-28T22:11:37.269154Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-28T22:11:42.955360Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-28T22:11:42.955747Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-28T22:11:48.890480Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-28T22:11:48.890835Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-28T22:20:22.026986Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-08-28T22:20:22.028566Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-08-28T22:20:22.718701Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-08-28T22:20:22.718897Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-08-28T22:20:23.409581Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-08-28T22:20:23.410437Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-08-28T22:22:29.564187Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-08-28T22:22:29.565839Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-08-28T22:22:29.804086Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-08-28T22:22:29.804236Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-08-28T22:22:29.936151Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-08-28T22:22:29.936353Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-08-28T22:31:33.837184Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T23:01:33.838229Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-28T23:47:21.027611Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T00:17:21.030148Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T00:47:21.031149Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T01:17:21.032041Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T01:47:21.033800Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T02:17:21.035924Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T02:47:21.038731Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T03:17:21.040884Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T03:47:21.043983Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T04:17:21.046608Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T06:10:46.133686Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T08:31:49.943403Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T09:01:49.944596Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T13:50:12.139851Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T14:20:12.141911Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T14:50:12.143419Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T15:20:12.146184Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T15:50:12.147543Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T16:43:40.913030Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T17:13:40.915249Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T17:43:40.917874Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T18:19:18.807123Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T18:49:18.810101Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T19:19:18.813217Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T19:49:18.815656Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T20:19:18.818342Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T20:49:18.820943Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T21:19:18.823316Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T21:49:18.825056Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T22:19:18.828844Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T22:49:18.830419Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T22:49:23.853203Z  INFO herdr::pane: agent changed pane=5 previous_agent=None agent=Some(Claude) process=claude pgid=Some(20817)
+2026-08-29T22:49:23.853202Z  INFO herdr::pane: agent changed pane=4 previous_agent=None agent=Some(Claude) process=claude pgid=Some(20586)
+2026-08-29T22:49:23.853201Z  INFO herdr::pane: agent changed pane=3 previous_agent=None agent=Some(Claude) process=claude pgid=Some(20335)
+2026-08-29T23:19:18.831121Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-29T23:49:18.833393Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T00:19:18.835285Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T00:49:18.872126Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T01:19:18.874408Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T01:49:18.875662Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T02:34:58.226961Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T03:04:58.229405Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T03:34:59.745507Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T04:04:59.745918Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T05:13:09.521735Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T05:18:39.177572Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T05:18:39.180742Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T05:18:46.296560Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T05:18:46.297726Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T05:18:53.694677Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T05:18:53.695675Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T05:27:57.614052Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="timeout" request_id="cli:agent:wait" method="agent.wait"
+2026-08-30T05:36:57.861312Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="timeout" request_id="cli:agent:wait" method="agent.wait"
+2026-08-30T05:43:09.523672Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T05:45:58.057625Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="timeout" request_id="cli:agent:wait" method="agent.wait"
+2026-08-30T05:46:08.637160Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="timeout" request_id="cli:agent:wait" method="agent.wait"
+2026-08-30T05:58:23.484383Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T05:58:23.485480Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T05:58:30.086478Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T05:58:30.086875Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T05:58:34.812686Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T05:58:34.813189Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T06:07:38.193791Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="timeout" request_id="cli:agent:wait" method="agent.wait"
+2026-08-30T06:13:09.525625Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T06:16:38.407718Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="timeout" request_id="cli:agent:wait" method="agent.wait"
+2026-08-30T06:25:44.011844Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="timeout" request_id="cli:agent:wait" method="agent.wait"
+2026-08-30T06:43:09.527648Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T06:53:58.289551Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:tab:create" method="tab.create" changes_ui=true
+2026-08-30T06:53:58.291669Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=6 rows=39 cols=47 scrollback_limit_bytes=10000000
+2026-08-30T06:53:58.298822Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=6 pid=17539
+2026-08-30T06:53:58.299341Z  INFO herdr::logging: tab renamed event="tab.rename" subsystem="tab" outcome="ok" workspace_id="w1" tab_id="w1:t3"
+2026-08-30T06:53:58.300636Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:tab:create" method="tab.create"
+2026-08-30T06:54:01.190508Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.191016Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:01.295992Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.296378Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:01.399275Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.399659Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:01.506300Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.506851Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:01.613350Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.613796Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:01.720335Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.720705Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:01.827651Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.828003Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:01.933933Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-30T06:54:01.934603Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-08-30T06:54:02.365098Z  INFO herdr::pane: agent changed pane=6 previous_agent=None agent=Some(Claude) process=claude pgid=Some(19081)
+2026-08-30T06:54:10.687053Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-08-30T06:54:38.669393Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T06:54:38.670455Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T07:13:09.530409Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T07:43:09.532131Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T07:56:47.108511Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T07:56:47.109918Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T08:30:38.565009Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T09:00:38.565367Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T09:24:38.545141Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T09:24:38.546089Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T09:30:38.566734Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T09:41:53.494934Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T09:41:53.496511Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T10:00:38.569988Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T10:30:38.572230Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T10:35:46.263801Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T10:35:46.265915Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T11:00:38.573824Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T11:20:39.017422Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-30T11:20:39.019367Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-30T11:30:38.575379Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T12:00:38.578791Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T14:33:11.959594Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T14:33:14.996872Z  WARN herdr::logging: update check failed event="update.check.complete" subsystem="update" outcome="error" err="failed to fetch Homebrew formula JSON"
+2026-08-30T14:33:14.999444Z  WARN herdr::detect::manifest_update: agent detection manifest update failed: failed to fetch https://herdr.dev/agent-detection/index.toml
+2026-08-30T15:03:11.962684Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T16:34:43.020946Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-30T16:35:21.964080Z  WARN herdr::logging: update check failed event="update.check.complete" subsystem="update" outcome="error" err="failed to fetch Homebrew formula JSON"
+2026-08-30T16:35:21.980627Z  WARN herdr::detect::manifest_update: agent detection manifest update failed: failed to fetch https://herdr.dev/agent-detection/index.toml
+2026-08-31T01:47:31.724149Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T02:11:53.504785Z  WARN herdr::logging: update check failed event="update.check.complete" subsystem="update" outcome="error" err="failed to fetch Homebrew formula JSON"
+2026-08-31T02:11:53.745324Z  WARN herdr::detect::manifest_update: agent detection manifest update failed: failed to fetch https://herdr.dev/agent-detection/index.toml
+2026-08-31T04:00:24.374126Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T04:42:50.189279Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T05:12:50.190898Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T05:42:50.189881Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T06:12:50.192318Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T06:42:50.194476Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T07:12:50.195226Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T07:17:23.371827Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:tab:create" method="tab.create" changes_ui=true
+2026-08-31T07:17:23.373853Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=7 rows=39 cols=47 scrollback_limit_bytes=10000000
+2026-08-31T07:17:23.380822Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=7 pid=18430
+2026-08-31T07:17:23.381508Z  INFO herdr::logging: tab renamed event="tab.rename" subsystem="tab" outcome="ok" workspace_id="w1" tab_id="w1:t4"
+2026-08-31T07:17:23.382626Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:tab:create" method="tab.create"
+2026-08-31T07:17:27.151281Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.152026Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.257804Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.259455Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.368083Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.369658Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.474057Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.474781Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.579630Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.580282Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.683622Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.684144Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.787587Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.788224Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.891904Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.892612Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:27.997457Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-08-31T07:17:27.998979Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-08-31T07:17:28.447686Z  INFO herdr::pane: agent changed pane=7 previous_agent=None agent=Some(Claude) process=claude pgid=Some(20851)
+2026-08-31T07:17:35.470940Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-31T07:17:35.472852Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-31T07:17:36.777802Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-08-31T07:37:14.690459Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-31T07:37:14.691809Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-31T07:42:50.196444Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T08:12:50.197027Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T08:25:11.196063Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-31T08:25:11.198432Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-31T08:42:50.198408Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T08:47:03.545991Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-31T08:47:03.547140Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-31T09:12:20.267259Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-08-31T09:12:20.269755Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-08-31T09:14:29.386354Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T22:11:21.257260Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-08-31T22:28:33.070663Z  WARN herdr::logging: update check failed event="update.check.complete" subsystem="update" outcome="error" err="failed to fetch Homebrew formula JSON"
+2026-08-31T22:28:33.070691Z  WARN herdr::detect::manifest_update: agent detection manifest update failed: failed to fetch https://herdr.dev/agent-detection/index.toml
+2026-09-01T03:41:18.939152Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T04:09:58.696134Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:tab:create" method="tab.create" changes_ui=true
+2026-09-01T04:09:58.697276Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=8 rows=39 cols=47 scrollback_limit_bytes=10000000
+2026-09-01T04:09:58.700493Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=8 pid=40263
+2026-09-01T04:09:58.700628Z  INFO herdr::logging: tab renamed event="tab.rename" subsystem="tab" outcome="ok" workspace_id="w1" tab_id="w1:t5"
+2026-09-01T04:09:58.701254Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:tab:create" method="tab.create"
+2026-09-01T04:10:02.535061Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T04:10:02.536324Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-09-01T04:10:02.769162Z  INFO herdr::pane: agent changed pane=8 previous_agent=None agent=Some(Codex) process=codex pgid=Some(41736)
+2026-09-01T04:10:10.556985Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-09-01T04:10:16.531723Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-09-01T04:10:54.941107Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T04:10:54.941648Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T04:11:01.028153Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-09-01T04:11:18.940642Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T04:12:06.431536Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:12:06.432489Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T04:13:21.347600Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:13:21.347814Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T04:14:30.679941Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:14:30.680422Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T04:15:23.923646Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:15:23.925528Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T04:16:16.993326Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:16:16.994138Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T04:18:27.214140Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:18:27.214673Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T04:41:18.942706Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T04:56:48.915082Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T04:56:48.916049Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T04:57:17.445745Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:57:17.447028Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T04:58:01.387874Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T04:58:01.388292Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:08:53.823061Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T05:08:53.824899Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T05:11:18.944284Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T05:12:19.368677Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T05:12:19.370128Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T05:15:40.940230Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T05:15:40.941919Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T05:16:49.934613Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:16:49.935206Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:17:32.154126Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:17:32.154551Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:18:00.685188Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:18:00.685666Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:18:21.303498Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:18:21.304128Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:18:43.633653Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:18:43.633895Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:19:19.593584Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:19:19.594310Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:19:36.922655Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:19:36.923486Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:19:56.837105Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:19:56.838014Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:20:43.096893Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:20:43.097919Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:22:31.817515Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:22:31.818157Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:24:19.367978Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:24:19.368434Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T05:28:48.253897Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T05:28:48.254462Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T05:29:34.693750Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T05:29:34.694579Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:12:24.974597Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T07:12:24.975557Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:17:07.861525Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T07:17:07.862322Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:17:25.062138Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T07:17:25.062548Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:18:29.044052Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T07:18:29.044494Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:18:50.090977Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T07:18:50.091503Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:20:59.217206Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T07:22:13.691663Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T07:22:13.692545Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:22:59.127146Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T07:22:59.127508Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T07:23:04.225444Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T07:23:04.227371Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T07:26:01.813938Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:tab:close" method="tab.close" changes_ui=true
+2026-09-01T07:26:01.823324Z  INFO herdr::logging: pane child exited event="pane.exit" subsystem="pane" outcome="completed" pane_id=7 status="ExitStatus { code: 1, signal: None }"
+2026-09-01T07:26:02.361410Z  INFO herdr::pane: pane session terminated pane=7 pid=18430 signal=Kill
+2026-09-01T07:26:02.361623Z  WARN herdr::app::actions: PaneDied for unknown pane pane=7
+2026-09-01T07:26:02.361631Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:tab:close" method="tab.close"
+2026-09-01T07:26:02.367541Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:tab:close" method="tab.close" changes_ui=true
+2026-09-01T07:26:02.371010Z  INFO herdr::logging: pane child exited event="pane.exit" subsystem="pane" outcome="completed" pane_id=8 status="ExitStatus { code: 1, signal: None }"
+2026-09-01T07:26:02.389101Z  INFO herdr::pane: pane session terminated pane=8 pid=40263 signal=Hangup
+2026-09-01T07:26:02.389337Z  WARN herdr::app::actions: PaneDied for unknown pane pane=8
+2026-09-01T07:26:02.389342Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:tab:close" method="tab.close"
+2026-09-01T07:26:07.392523Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-09-01T08:05:14.318686Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T08:35:14.320665Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T09:05:14.323206Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T09:35:14.325255Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T09:53:58.923217Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:tab:create" method="tab.create" changes_ui=true
+2026-09-01T09:53:58.924958Z  INFO herdr::logging: spawning pane terminal event="pane.spawn.start" subsystem="pane" outcome="started" pane_id=9 rows=39 cols=47 scrollback_limit_bytes=10000000
+2026-09-01T09:53:58.929392Z  INFO herdr::logging: pane child spawned event="pane.spawned" subsystem="pane" outcome="ok" pane_id=9 pid=53255
+2026-09-01T09:53:58.929966Z  INFO herdr::logging: tab renamed event="tab.rename" subsystem="tab" outcome="ok" workspace_id="w1" tab_id="w1:t6"
+2026-09-01T09:53:58.931255Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:tab:create" method="tab.create"
+2026-09-01T09:53:58.936582Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:58.937280Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.148473Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.149048Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.255810Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.256327Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.359570Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.360264Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.467503Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.468184Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.575290Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.575922Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.681381Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.682014Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.789357Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.790051Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:53:59.897005Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:53:59.897532Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:54:00.005931Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:54:00.006635Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:54:00.213697Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:54:00.214232Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:54:00.425664Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:54:00.426521Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:54:00.530432Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:54:00.532065Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:54:01.994515Z  INFO herdr::pane: agent changed pane=9 previous_agent=None agent=Some(Codex) process=codex pgid=Some(54693)
+2026-09-01T09:54:10.322453Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-09-01T09:54:37.598251Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T09:54:37.600080Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T09:54:47.259810Z  INFO herdr::pane: agent changed pane=9 previous_agent=Some(Codex) agent=None pgid=Some(53255)
+2026-09-01T09:54:47.542870Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:read" method="agent.read"
+2026-09-01T09:54:51.960700Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-09-01T09:55:17.846083Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:start" method="agent.start" changes_ui=true
+2026-09-01T09:55:17.847165Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:start" method="agent.start"
+2026-09-01T09:55:17.878229Z  INFO herdr::pane: agent changed pane=9 previous_agent=None agent=Some(Codex) process=codex pgid=Some(57653)
+2026-09-01T09:55:23.997749Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:prompt" method="agent.prompt" changes_ui=true
+2026-09-01T09:55:23.999343Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:prompt" method="agent.prompt"
+2026-09-01T09:55:30.093347Z  INFO herdr::logging: session saved event="persist.save" subsystem="persist" outcome="ok" path=/Users/yutaaoki/dotfiles/.config/herdr/session.json workspaces=1
+2026-09-01T09:56:55.600709Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T09:56:55.601292Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="error" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T09:56:55.606781Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T09:56:55.607267Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T09:57:19.089276Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T09:57:19.090214Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T09:58:06.981110Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T09:58:06.981519Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T10:01:10.295069Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T10:01:10.295859Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T10:02:04.553122Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T10:02:04.553893Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T10:03:30.116198Z  INFO herdr::logging: api request received event="api.request.start" subsystem="api" outcome="started" request_id="cli:agent:send-keys" method="agent.send_keys" changes_ui=true
+2026-09-01T10:03:30.118024Z  INFO herdr::logging: api request completed event="api.request.complete" subsystem="api" outcome="ok" request_id="cli:agent:send-keys" method="agent.send_keys"
+2026-09-01T10:05:14.326675Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T10:35:14.330965Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T11:05:14.330074Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T11:35:14.331536Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T12:05:14.334011Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T12:35:14.336136Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T13:05:14.336443Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T13:35:14.339354Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T14:05:14.340839Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T14:35:14.342728Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T15:05:14.344820Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T15:35:14.346355Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T16:05:14.348113Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T16:35:14.350312Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T17:05:14.352214Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T17:35:14.353736Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T18:39:05.138761Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T19:09:05.141008Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T19:55:14.337504Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T20:25:14.339079Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T20:55:14.341775Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T21:47:05.951736Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T22:17:05.952659Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T22:47:05.954614Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T23:17:05.956403Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-01T23:47:05.958897Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T00:25:40.270769Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T00:55:40.273984Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T01:25:40.275591Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T01:55:40.283502Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T02:42:22.104964Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T03:12:22.108115Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T03:42:22.108995Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T04:28:22.109814Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T04:58:22.111248Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"
+2026-09-02T05:28:22.113068Z  INFO herdr::logging: checking for updates event="update.check.start" subsystem="update" outcome="started"

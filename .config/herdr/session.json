@@ -1,0 +1,167 @@
+{
+  "version": 3,
+  "workspaces": [
+    {
+      "id": "w1",
+      "custom_name": null,
+      "identity_cwd": "/Users/yutaaoki/SpeakGain/.worktrees/164",
+      "public_pane_numbers": {
+        "1": 1,
+        "9": 9,
+        "2": 2,
+        "5": 5,
+        "3": 3,
+        "6": 6,
+        "4": 4
+      },
+      "next_public_pane_number": 10,
+      "public_tab_numbers": [
+        1,
+        2,
+        3,
+        6
+      ],
+      "next_public_tab_number": 7,
+      "tabs": [
+        {
+          "custom_name": null,
+          "layout": {
+            "Split": {
+              "direction": "Horizontal",
+              "ratio": 0.5,
+              "first": {
+                "Pane": 1
+              },
+              "second": {
+                "Pane": 2
+              }
+            }
+          },
+          "panes": {
+            "1": {
+              "cwd": "/Users/yutaaoki/SpeakGain/.worktrees/164"
+            },
+            "2": {
+              "cwd": "/Users/yutaaoki/SpeakGain/.worktrees/164"
+            }
+          },
+          "zoomed": false,
+          "focused": 2,
+          "root_pane": 1
+        },
+        {
+          "custom_name": "icon",
+          "layout": {
+            "Split": {
+              "direction": "Horizontal",
+              "ratio": 0.5,
+              "first": {
+                "Pane": 3
+              },
+              "second": {
+                "Split": {
+                  "direction": "Vertical",
+                  "ratio": 0.5,
+                  "first": {
+                    "Pane": 4
+                  },
+                  "second": {
+                    "Pane": 5
+                  }
+                }
+              }
+            }
+          },
+          "panes": {
+            "4": {
+              "cwd": "/Users/yutaaoki/SpeakGain/.worktrees/develop",
+              "agent_name": "icon-b",
+              "managed_agent_kind": "claude",
+              "agent_session": {
+                "source": "herdr:claude",
+                "agent": "claude",
+                "kind": "id",
+                "value": "765c86aa-6ff3-44ca-b457-a788bc12bdae"
+              }
+            },
+            "3": {
+              "cwd": "/Users/yutaaoki/SpeakGain/.worktrees/develop",
+              "agent_name": "icon-a",
+              "managed_agent_kind": "claude",
+              "agent_session": {
+                "source": "herdr:claude",
+                "agent": "claude",
+                "kind": "id",
+                "value": "ecc06e0a-0f40-4da5-9bd1-bde1430d8b72"
+              }
+            },
+            "5": {
+              "cwd": "/Users/yutaaoki/SpeakGain/.worktrees/develop",
+              "agent_name": "icon-c",
+              "managed_agent_kind": "claude",
+              "agent_session": {
+                "source": "herdr:claude",
+                "agent": "claude",
+                "kind": "id",
+                "value": "42174f6a-97b2-453f-88b7-bfff0db768f7"
+              }
+            }
+          },
+          "zoomed": false,
+          "focused": 3,
+          "root_pane": 3
+        },
+        {
+          "custom_name": "darkmode",
+          "layout": {
+            "Pane": 6
+          },
+          "panes": {
+            "6": {
+              "cwd": "/Users/yutaaoki/SpeakGain/.worktrees/develop",
+              "agent_name": "darkmode",
+              "managed_agent_kind": "claude",
+              "agent_session": {
+                "source": "herdr:claude",
+                "agent": "claude",
+                "kind": "id",
+                "value": "78f1b5bb-0084-4dee-98a5-a7767dd84a7d"
+              }
+            }
+          },
+          "zoomed": false,
+          "focused": 6,
+          "root_pane": 6
+        },
+        {
+          "custom_name": "staging-verify",
+          "layout": {
+            "Pane": 9
+          },
+          "panes": {
+            "9": {
+              "cwd": "/Users/yutaaoki/SpeakGain/.worktrees/develop",
+              "agent_name": "staging-verify",
+              "managed_agent_kind": "codex",
+              "agent_session": {
+                "source": "herdr:codex",
+                "agent": "codex",
+                "kind": "id",
+                "value": "01a05c65-0280-72e2-85cc-5c924a8c157e"
+              }
+            }
+          },
+          "zoomed": false,
+          "focused": 9,
+          "root_pane": 9
+        }
+      ],
+      "active_tab": 0
+    }
+  ],
+  "active": 0,
+  "selected": 0,
+  "sidebar_width": 26,
+  "sidebar_section_split": 0.5,
+  "collapsed_space_keys": []
+}

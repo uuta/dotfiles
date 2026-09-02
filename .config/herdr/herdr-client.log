@@ -1,0 +1,12 @@
+2026-08-28T10:56:41.214010Z  INFO herdr::logging: herdr starting event="app.startup" subsystem="client" outcome="started" pid=43075
+2026-08-28T10:56:41.214055Z  INFO herdr::client: connecting to server path=/Users/yutaaoki/dotfiles/.config/herdr/herdr-client.sock
+2026-08-28T10:56:41.452172Z  INFO herdr::client: handshake succeeded version=20 encoding=SemanticFrame
+2026-08-28T10:56:58.483367Z  INFO herdr::logging: herdr exiting event="app.shutdown" subsystem="client" outcome="completed" pid=43075
+2026-08-28T10:57:06.441085Z  INFO herdr::logging: herdr starting event="app.startup" subsystem="client" outcome="started" pid=46532
+2026-08-28T10:57:06.441184Z  INFO herdr::client: connecting to server path=/Users/yutaaoki/dotfiles/.config/herdr/herdr-client.sock
+2026-08-28T10:57:06.559189Z  INFO herdr::client: handshake succeeded version=20 encoding=SemanticFrame
+2026-08-28T10:57:30.467725Z  INFO herdr::logging: herdr exiting event="app.shutdown" subsystem="client" outcome="completed" pid=46532
+2026-08-28T11:00:32.327335Z  INFO herdr::logging: herdr starting event="app.startup" subsystem="client" outcome="started" pid=57002
+2026-08-28T11:00:32.327561Z  INFO herdr::client: connecting to server path=/Users/yutaaoki/dotfiles/.config/herdr/herdr-client.sock
+2026-08-28T11:00:32.563294Z  INFO herdr::client: handshake succeeded version=20 encoding=SemanticFrame
+2026-08-28T11:14:30.031919Z  INFO herdr::logging: herdr exiting event="app.shutdown" subsystem="client" outcome="completed" pid=57002
