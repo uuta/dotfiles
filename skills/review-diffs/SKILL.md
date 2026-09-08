@@ -1,6 +1,6 @@
 ---
 name: review-diffs
-description: Review git diffs with a manager-led workflow that preserves issue requirements. First derive a shared review contract from the user request and any linked issue or PR, then select review perspectives from a catalog (a mandatory floor plus diff-specific optional lenses, including a rendered UI/visual lens with web and Flutter-golden backends), run those perspectives as parallel tmux review agents, and finally perform a manager pass that checks total requirement coverage before summarizing.
+description: Review git diffs with a manager-led workflow that preserves issue requirements. Derive a shared review contract, select mandatory and risk-specific lenses, run independent parallel CLI reviewers through tmux or an explicitly selected non-interactive supervisor, then perform a serial manager pass for total requirement coverage.
 allowed-tools: Bash(tmux:*), Bash(git:*), Bash(mkdir:*), Bash(gh:*), Bash(rg:*), Bash(sed:*), Bash(flutter:*), Bash(npx:*), Read
 ---
 
@@ -20,15 +20,36 @@ The manager owns:
 - accepted deferrals and out-of-scope boundaries
 - final judgment
 
-The tmux reviewers are specialists. They do not decide the total direction on their own.
+The reviewers are specialists. They do not decide the total direction on their own.
+
+### Execution backend
+
+Keep the review contract, lens selection, model/effort policy, runtime evidence,
+and serial manager judgment the same across backends. The caller may explicitly
+select **non-interactive** execution when a process supervisor owns CLI startup,
+structured results, deadlines, and cleanup. Read
+[references/non-interactive.md](references/non-interactive.md) in that mode.
+Otherwise use the tmux procedure below. Never change an in-flight review's
+backend or silently fall back after a failed invocation.
 
 ### Vendor-neutral by design
 
-Reviewers are launched as independent CLI agents inside tmux windows, not as engine-specific subagent tools. This keeps the skill usable with any coding-agent CLI. The examples below launch `claude`, but a window may instead run `codex` in full-autonomy mode (approval-policy never + full sandbox access) or another CLI. Do not rewrite this skill to use a single engine's native subagent/task tool — the tmux mechanism is what makes it reusable across engines.
+Reviewers are independent CLI invocations, not engine-specific subagent tools.
+The tmux backend uses windows; the non-interactive backend uses owned child
+processes. Both retain cross-engine review. Do not replace them with a single
+engine's native subagent/task tool. The tmux examples below use full-autonomy
+permissions; non-interactive execution uses the supervisor's explicit permission
+policy and must report any resulting verification gap.
 
 For the same reason, reviewer instructions and the UI/visual backends must be self-contained: they rely on portable CLI tools (`flutter test`, a headless-browser screenshot CLI) and inline criteria, not on any one engine's MCP servers or skills. A `claude` reviewer MAY additionally lean on `ui-critique` / `visual-ui-contract` if available, but the prompt must still work without them.
 
 ## Workflow
+
+Steps 1–4, lens prompts/model policy, and the manager/summary requirements are
+shared. For non-interactive execution, the linked reference replaces tmux-specific
+steps 5–8 and 11, and replaces instructions to write result files with returning
+the configured structured response to the supervisor. Do not run tmux from a
+non-interactive lens or manager.
 
 1. Build a review contract before spawning reviewers
 2. Create `docs/review/`, capture the diff, and classify the touched surfaces
