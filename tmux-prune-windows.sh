@@ -59,7 +59,7 @@ esac
 
 readonly max_age_seconds=$((max_age_hours * 60 * 60))
 readonly tab=$'\t'
-readonly window_format="#{window_id}${tab}#{session_name}${tab}#{window_index}${tab}#{window_name}${tab}#{window_activity}${tab}#{window_active_clients}${tab}#{window_panes}"
+readonly window_format="#{window_id}${tab}#{session_name}${tab}#{window_index}${tab}#{window_name}${tab}#{?#{@last_viewed},#{@last_viewed},untracked}${tab}#{window_activity}${tab}#{window_active_clients}${tab}#{window_panes}"
 
 format_duration() {
     local total_seconds=$1
@@ -103,8 +103,8 @@ window_commands() {
 # Sets: window_label, window_state, window_reason, inactive_seconds.
 inspect_window() {
     local window_id=$1
-    local metadata session_name window_index window_name window_activity
-    local active_clients pane_count now commands
+    local metadata session_name window_index window_name last_viewed window_activity
+    local active_clients pane_count now commands activity_time activity_label
 
     if ! metadata=$(tmux display-message -p -t "$window_id" "$window_format" 2>/dev/null); then
         window_label=$window_id
@@ -114,12 +114,23 @@ inspect_window() {
         return
     fi
 
-    IFS=$'\t' read -r _window_id session_name window_index window_name window_activity active_clients pane_count <<< "$metadata"
+    IFS=$'\t' read -r _window_id session_name window_index window_name last_viewed window_activity active_clients pane_count <<< "$metadata"
     window_label="${session_name}:${window_index} ${window_name}"
     commands=$(window_commands "$window_id")
 
+    case "$last_viewed" in
+        untracked|''|*[!0-9]*)
+            activity_time=$window_activity
+            activity_label='output inactive (untracked)'
+            ;;
+        *)
+            activity_time=$last_viewed
+            activity_label='not viewed'
+            ;;
+    esac
+
     now=$(date +%s)
-    inactive_seconds=$((now - window_activity))
+    inactive_seconds=$((now - activity_time))
     if ((inactive_seconds < 0)); then
         inactive_seconds=0
     fi
@@ -138,12 +149,12 @@ inspect_window() {
 
     if ((inactive_seconds < max_age_seconds)); then
         window_state='keep'
-        window_reason="inactive $(format_duration "$inactive_seconds") panes=$pane_count commands=$commands"
+        window_reason="$activity_label $(format_duration "$inactive_seconds") panes=$pane_count commands=$commands"
         return
     fi
 
     window_state='eligible'
-    window_reason="inactive $(format_duration "$inactive_seconds") panes=$pane_count commands=$commands"
+    window_reason="$activity_label $(format_duration "$inactive_seconds") panes=$pane_count commands=$commands"
 }
 
 if ! windows=$(tmux list-windows -a -F '#{window_id}' 2>/dev/null); then
