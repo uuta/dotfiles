@@ -15,6 +15,7 @@
 .config/karabiner/automatic_backups/
 .playwright-mcp/
 test/node_modules/
+skills/browser-interactive/node_modules/
 .worktrees/
 __pycache__/
 *.pyc
