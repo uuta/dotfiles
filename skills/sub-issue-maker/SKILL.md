@@ -1,6 +1,6 @@
 ---
 name: sub-issue-maker
-description: Provide coarse, agent-ready task granularity for cutting GitHub sub-issues. Use implementation contracts and blackbox acceptance, avoid creating sub-issues for policy clarification, unresolved decisions, or specification contradictions.
+description: "Choose coarse implementation issue boundaries and readiness criteria before drafting or creating sub-issues."
 ---
 
 ## Conditions

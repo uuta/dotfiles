@@ -4,35 +4,26 @@ description: tmux の別ペインにコマンドを送信する。「ペイン�
 allowed-tools: Bash(tmux:*)
 ---
 
-# tmux コマンド送信スキル
+# tmux コマンド送信
 
-## 使い方
+送信対象と操作の依頼が明示されている場合に使う。対象 pane のプロセスと割り当てを確認し、正確な `%pane_id` に送る。window 名や番号だけで対象を決めない。
 
-tmux のペインにコマンドを送信して実行する場合、コマンドが単一行か複数行かで方法を切り替える。
+## Agent への prompt
 
-### 単一行コマンド
+改行の有無にかかわらず、prompt を一意な一時ファイルに保存し、専用の名前付き buffer で配送する。並行実行間で共有される `/tmp/tmux_send.txt` やデフォルト buffer を使わない。
 
-```bash
-tmux send-keys -t <ペイン番号> '<コマンド>' C-m
-```
-
-### 複数行コマンド（改行を含む場合）
+以下の `prompt_file` は今回作成したファイル、`target_pane` は確認済み pane。シェルの quoted heredoc またはファイル書き込み API で prompt を保存し、本文をシェルコードへ展開しない。
 
 ```bash
-# 1. 一時ファイルに書き出す
-printf '%s' "$command" > /tmp/tmux_send.txt
-# 2. tmux バッファに読み込む
-tmux load-buffer /tmp/tmux_send.txt
-# 3. ペインにペーストする（改行を保ったまま送信）
-tmux paste-buffer -t <ペイン番号>
-sleep 0.5
-# 4. 実行する
-tmux send-keys -t <ペイン番号> C-m
+rtk proxy tmux load-buffer -b "$prompt_buffer" "$prompt_file"
+rtk proxy tmux paste-buffer -b "$prompt_buffer" -t "$target_pane" -d
+rtk proxy sleep 0.5
+rtk proxy tmux send-keys -t "$target_pane" C-m
+rtk proxy tmux capture-pane -p -t "$target_pane" -S -80
 ```
 
-## 手順
+`prompt_buffer` は一時ファイルの basename など、今回の送信で一意な名前にする。capture で入力が提出され、処理が始まったことを確認する。未提出が確認できた場合だけ入力終端や Enter を補正し、再確認する。処理中の prompt を丸ごと再送しない。完了・中止後は自分が作った一時ファイルと残存 buffer を片付ける。
 
-1. `tmux list-panes` でペイン一覧を確認
-2. コマンドに改行が含まれるか判定する
-3. 単一行なら `tmux send-keys -t <ペイン番号> '<コマンド>' C-m` で送信・実行
-4. 複数行なら `load-buffer` → `paste-buffer` → `C-m` の順で送信・実行
+## Shell pane へのコマンド
+
+対話 agent ではなく shell prompt と確認できた pane に短いコマンドを送る場合は、`send-keys -l` で本文、続けて `C-m` を送ってよい。複数行は上の buffer 手順を使う。送信後は同じ pane の出力を確認する。

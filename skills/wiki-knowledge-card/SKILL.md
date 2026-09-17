@@ -1,6 +1,6 @@
 ---
 name: wiki-knowledge-card
-description: Generate a polished, self-contained dark-theme HTML "visual study sheet" for a term/word/concept in the Obsidian Wiki at ~/uuta/Wiki, then link it from a sibling Markdown note. Use when the user wants a visual vocabulary/knowledge card, an HTML version of a term explanation, or says things like "make a visual card for X", "knowledge card", "Wikiに<term>のhtmlを作って", or invokes /knowledge and asks for an .html. Produces <Term>.html (house style — hero, SVG diagrams, bilingual EN/JP) and ensures <Term>.md contains an open link.
+description: "Create a visual HTML study card for an Obsidian Wiki concept and link it from the sibling Markdown note."
 user_invocable: true
 ---
 

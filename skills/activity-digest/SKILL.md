@@ -1,6 +1,6 @@
 ---
 name: activity-digest
-description: その日の作業ログを横断して activity digest を作る。ユーザーが「activity digest」「今日何をしたかログから見たい」「作業ログをまとめたい」「証跡ベースで振り返りたい」などを求めたときに使う。特定プロジェクト名に依存せず、その日に触った作業対象を git、GitHub、Codex、Claude、tmux、shell snapshot から復元する。
+description: "指定日の Git・Codex・Claude などの作業履歴から、証跡に基づく activity digest を作る。"
 ---
 
 # Activity Digest

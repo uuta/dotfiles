@@ -1,6 +1,6 @@
 ---
 name: neo-frontend-design
-description: Create dark command-center / cyberpunk dashboard interfaces inspired by the OJPP Portal design. Use this skill when the user asks for a dark, neon-accented, terminal-aesthetic UI. Generates production-grade code with glitch effects, monospace typography, and per-module neon color coding.
+description: "Design web interfaces with a requested dark, neon, terminal, or cyberpunk aesthetic."
 ---
 
 This skill guides creation of dark command-center / cyberpunk dashboard interfaces inspired by the OJPP Portal (https://ojpp-portal-web.vercel.app/). Every output must feel like a mission-critical control panel — dense with data, alive with neon glow, and grounded in terminal aesthetics.

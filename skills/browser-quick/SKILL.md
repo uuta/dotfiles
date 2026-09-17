@@ -1,6 +1,6 @@
 ---
 name: browser-quick
-description: Fetch or render a web page as a one-shot result without interactive browser control. Use for HTML, Markdown, screenshots, PDFs, accessibility trees, links, selector-based scraping, snapshots, or structured JSON extraction. Route structured extraction to Kitesurf and visually faithful or dynamic rendering to Cloudflare Chromium, with one Chromium fallback after a Kitesurf semantic or visual failure.
+description: "Fetch a page or produce a one-shot screenshot, PDF, or structured extraction without interactive browser control."
 ---
 
 # Browser Quick

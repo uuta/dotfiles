@@ -1,6 +1,6 @@
 ---
 name: visual-ui-contract
-description: Create and enforce visual contracts for screenshot-driven UI work only when an approved screenshot, mockup, ideal image, golden baseline, or explicit visual fidelity target is the source of truth. Do not use for UI work governed by shared tokens, primitives, or a UI vocabulary unless an approved reference image is also binding.
+description: "Define and verify UI fidelity when an approved screenshot, mockup, or golden image is a binding design reference."
 ---
 
 # Visual UI Contract

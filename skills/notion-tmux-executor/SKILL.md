@@ -1,6 +1,6 @@
 ---
 name: notion-tmux-executor
-description: Use when a user asks to read, create, append, replace, or update Notion content and the work should be delegated to a dedicated Claude Code tmux agent. Convert the natural-language request into a clear Notion operation contract, keep page body content as Markdown, create a unique run-scoped workspace under ${TMPDIR:-/tmp}, and send the task to the `notion-executor` agent instead of hand-writing raw Notion block JSON in the main agent.
+description: "Delegate requested Notion reading or editing to a dedicated Claude Code tmux executor using a scoped operation contract."
 ---
 
 # Notion Tmux Executor

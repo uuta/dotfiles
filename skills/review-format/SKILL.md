@@ -1,6 +1,6 @@
 ---
 name: review-format
-description: Output in the specified format when a review of specific markdown is requested.
+description: "Review a Markdown document with detailed scores for goal alignment, completeness, relevance, and actionability."
 ---
 
 - Score (up to 100)

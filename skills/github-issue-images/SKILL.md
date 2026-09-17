@@ -1,6 +1,6 @@
 ---
 name: github-issue-images
-description: Fetch and inspect screenshots embedded in GitHub issues or pull requests, especially `github.com/user-attachments/assets/...` URLs that often return `404` without GitHub authentication. Use when an issue or PR includes images and an agent needs the actual pixels from CLI or tmux.
+description: "Fetch and inspect images attached to GitHub issues or PRs, including attachments requiring GitHub authentication."
 allowed-tools: Bash(gh:*), Bash(curl:*), Bash(rg:*), Bash(sed:*), Bash(find:*), Bash(mkdir:*), Bash(file:*)
 ---
 

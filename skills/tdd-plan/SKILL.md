@@ -1,6 +1,6 @@
 ---
 name: tdd-plan
-description: Create implementation plans following TDD methodology with test-first approach. Each test file is immediately followed by its implementation (fine-grained RED→GREEN cycles).
+description: "Create an implementation plan when test-first TDD is requested, pairing each behavior test with its implementation."
 ---
 
 # TDD Implementation Plan

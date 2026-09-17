@@ -1,6 +1,6 @@
 ---
 name: blackbox-test-design
-description: Turn an input specification into a minimal, high-coverage black-box test set using Equivalence Partitioning + 2-value Boundary Value Analysis. Use when designing or reviewing test cases for functions, forms, validators, or APIs from their input domains (ranges, formats, enums) — not from source code. Triggered by phrases like "design test cases", "what should I test for this input", "boundary tests", or "EP/BVA for this field".
+description: "Design or review black-box test cases from input domains using equivalence partitions and boundary values."
 user_invocable: true
 ---
 

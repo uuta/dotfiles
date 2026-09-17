@@ -1,6 +1,6 @@
 ---
 name: review-comment-triage
-description: Triage GitHub PR review comments after a PR is open and decide whether each comment is worth fixing, should be rejected, is optional cleanup, or needs user/product judgment. Use when the user asks if a PR review comment is valid, worth fixing, should be addressed, or asks to inspect GitHub review feedback without immediately changing code.
+description: "Assess GitHub PR review comments for validity, priority, and scope before deciding which requested fixes to implement."
 allowed-tools: Bash(gh:*), Bash(git:*), Bash(rg:*), Bash(sed:*)
 ---
 
@@ -15,8 +15,10 @@ This skill is for **after a PR exists**. It is not a replacement for
 
 ## Core Rule
 
-Do not implement changes during triage unless the user explicitly asks to fix
-after the classification. The default output is judgment plus reasoning.
+For a review-only request, return judgment plus reasoning without editing code.
+If the user already asked to address or fix review feedback, classify it first,
+then implement the valid in-scope fixes without asking for authorization again.
+Keep optional cleanup and unresolved product decisions out of the fix loop.
 
 ## Classification
 
@@ -118,6 +120,6 @@ If multiple comments exist, group by thread and order by severity:
 
 ## Relationship To Other Skills
 
-- Use `review-diffs` before PR creation to review local diffs.
+- Use `review-diffs` for reviewing code changes; the presence of a PR does not require another full review.
 - Use this skill after PR creation to decide whether review comments deserve code changes.
 - If a comment is classified `must_fix` or `should_fix` and the user asks to fix it, use the normal implementation/review loop afterward.

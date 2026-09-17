@@ -1,6 +1,6 @@
 ---
 name: simple-review-format
-description: Output in the specified format when a review of specific markdown is requested.
+description: "Give a concise scored Markdown review with a summary and concrete issues."
 ---
 
 - Score (up to 100)

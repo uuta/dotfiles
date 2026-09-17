@@ -1,6 +1,6 @@
 ---
 name: daily-review
-description: 日次の振り返りを定型で進める。ユーザーが「今日の振り返り」「日次レビュー」「daily review」などを求めたときに使う。まず activity digest とログから実際の活動を調査して要約し、その要約を踏まえて短い質問で不足分を集め、自然な振り返り文、明日の最重要1個、必要なら template/checklist/skill/automation 化候補まで整理する。
+description: "日次レビューを行う。作業ログと短い質問から振り返りと明日の最重要タスクを整理する。"
 ---
 
 # Daily Review

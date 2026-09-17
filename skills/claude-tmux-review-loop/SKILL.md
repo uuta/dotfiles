@@ -1,6 +1,6 @@
 ---
 name: claude-tmux-review-loop
-description: tmux 上の Claude Code に issue または明示タスクを割り当て、進捗を監視し、実装完了ごとに diff review を行い、findings があれば同じ pane に修正依頼を返して review clean になるまで繰り返すスキル。仕様不足や判断待ちが出たらユーザーに確認する。「Claude を監督して」「tmux の Claude を見ながらレビューを回して」「review clean になるまで Claude と往復して」などで使用。
+description: "指定された tmux の Claude Code タスクを監督し、実装・レビュー・必要な修正を完了条件まで進める。"
 allowed-tools: Bash(tmux:*), Bash(git:*), Bash(gh:*), Bash(rg:*), Bash(sed:*), Bash(ls:*), Bash(find:*), Bash(mkdir:*)
 ---
 
@@ -34,8 +34,7 @@ Claude Code の実装を supervisor として監督し、`implement -> review ->
 - review は issue contract に対して行う。単なる好みの refactor や style 指摘で loop を伸ばさない
 - 初回 handoff が scope / suggested files だけで、`Done when` / `Not done if` / `Hard blockers` を Claude に渡していない場合、そのまま実装を続けさせない。必要なら assignment contract を補強してから進める
 - findings を Claude に返すときは、重複と out-of-scope を落とした concrete な修正依頼だけを返す
-- 仕様不足、product decision、矛盾した contract、実環境 blocker が出たら推測せずユーザーに聞く
-- Claude が real question を出しているときは無理に review に進めず、その質問をユーザーに中継する
+- 仕様不足や質問には、まず既存の contract・会話・環境情報で回答する。未決の product decision、矛盾、権限不足など supervisor で解決できない点だけユーザーに聞く。依存しない作業は継続する。
 
 ## Inputs
 
@@ -54,7 +53,7 @@ Claude Code の実装を supervisor として監督し、`implement -> review ->
 - 既存 task を review したいのか、次の issue を start したいのかが user request から読めない
 - parent issue 配下に open issue が複数あり、どれを supervise するか特定できない
 
-`active pane があるからそれを採用する` で進めてはいけない。start / resume target に 10% でも迷いがあるなら短く聞く。
+`active pane があるからそれを採用する` で進めてはいけない。会話と pane の割り当てを確認しても複数の対象が残り、誤った作業を開始する恐れがある場合だけ短く聞く。
 
 ## Procedure
 
@@ -118,8 +117,8 @@ contract が曖昧なままなら Claude に投げ切らず、ここでユーザ
 
 送信方法は `tmux-sender` に従う。
 
-- 単一行なら `tmux send-keys`
-- 複数行なら `load-buffer -> paste-buffer -> C-m`
+- agent prompt は改行の有無によらず、専用 buffer の `load-buffer -> paste-buffer -> C-m`
+- 正確な pane id に送り、capture で提出を確認する。処理中の prompt を再送しない
 
 ### 3. Watch The Pane
 
@@ -148,7 +147,7 @@ Claude がまだ作業中なら polling を続ける。次のどちらかにな�
 
 #### Needs User
 
-次のどれかを満たしたらユーザー確認に切り替える。
+次の状態を調査し、既存の権限と情報で復旧できなければユーザー確認に切り替える。
 
 - Claude が仕様質問や product decision を求めた
 - Claude が missing credentials / broken environment / unresolved conflict を報告した
@@ -169,7 +168,7 @@ status check-in のたびに新しい task selection や continuation confirmati
 
 ### 4. Review The Diff
 
-`review-diffs` が使えるなら優先して使う。使わない場合でも最低限次は確認する。
+`review-diffs` の判断基準を使い、初回の変更規模とリスクに合わせて focused / managed を選ぶ。修正後は accepted findings と影響範囲を再確認する。呼び出し側が managed review を必須にしている場合は維持する。使わない場合でも最低限次は確認する。
 
 ```bash
 git -C <worktree_path> status --short --branch
@@ -216,6 +215,8 @@ real finding だけを短く整理し、同じ pane に返す。
 - out-of-scope を除去
 - 何を直せば close かを明確化
 - contract の `Done when` / `Not done if` と直接結びつける
+
+同じ finding の再指摘は、未解消の条件または新しい証拠を示す。optional cleanup の追加で loop を延ばさない。同じ blocker が進展なく繰り返される場合は、予算を自動リセットせず原因と残る判断を報告する。
 
 その後、すぐに Step 3 に戻る。
 

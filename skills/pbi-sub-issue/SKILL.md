@@ -1,6 +1,6 @@
 ---
 name: pbi-sub-issue
-description: pbi-task-split で ready と判定された実装タスクだけを GitHub Sub-issue として作成し、親 Issue との関係を設定する。方針未決・仕様矛盾・単なる明確化は sub-issue 化せず、親 issue の spec correction に戻す。粗めの実装 issue と phase gate / blackbox acceptance を優先する。
+description: "分割済みの ready な実装タスクを GitHub Sub-issue として作成し、親 Issue に紐づける。"
 ---
 
 # PBI Sub-issue Creator

@@ -1,6 +1,6 @@
 ---
 name: tdd-plan-review
-description: Review and reorder existing implementation plans to follow TDD methodology. Use when user has a plan that puts implementation before tests, or when validating plan structure for TDD compliance. Reorganizes steps to ensure test-first approach.
+description: "Review or reorder an existing plan when TDD compliance or test-first sequencing is requested."
 ---
 
 # TDD Plan Review

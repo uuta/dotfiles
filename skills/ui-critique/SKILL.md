@@ -1,6 +1,6 @@
 ---
 name: ui-critique
-description: Critique a rendered UI for visual hierarchy, clutter, "AI-generated" tells, and drift from an established design world — when there is no golden image to match against, only a sense that "it looks off / too busy / too AI". Renders the real pixels (headless browser screenshot), judges against a named failure-mode taxonomy, and returns ranked, subtraction-biased fixes that preserve the world. Triggered by "review this UI", "this screen looks cluttered/AI-ish", "critique this design", "why does this feel off", "keep the vibe but clean it up".
+description: "Critique rendered UI hierarchy, clutter, and visual consistency when no approved reference image defines fidelity."
 user_invocable: true
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: agent-workspace
-description: Prepare and clean up a project workspace and git worktrees so agents can work safely per issue. Use `main/` as the base checkout and `.worktrees/<issue_number>/` as the dedicated worktree directory. After creating or reusing a worktree, copy ignored env/local config files declared by `docs/env-paths.txt` from `main/` into the worktree. Do not create worktrees directly under home or inside an existing checkout. Use branch names like `feat/<issue_number>`. Use this for requests such as "create a worktree", "set up an agent workspace", or "prepare an issue-specific working directory".
+description: "Create, reuse, or clean up issue-specific git worktrees and agent workspaces using the local directory and environment conventions."
 allowed-tools: Bash(git:*), Bash(ls:*), Bash(find:*), Bash(mkdir:*), Bash(rm:*), Bash(cp:*), Bash(test:*)
 ---
 

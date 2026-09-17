@@ -1,6 +1,6 @@
 ---
 name: worktree-env
-description: Copy or link ignored env-like files into a git worktree from a source checkout or secrets directory using a tracked manifest such as `docs/env-paths.txt`. Use for worktree bootstrap when a repo declares local runtime/build config paths, especially after `agent-workspace` creates or reuses an issue worktree.
+description: "Copy or link manifest-declared ignored runtime and build configuration into a git worktree."
 allowed-tools: Bash(git:*), Bash(rg:*), Bash(ls:*), Bash(find:*), Bash(mkdir:*), Bash(ln:*), Bash(cp:*), Bash(rm:*), Bash(readlink:*)
 ---
 

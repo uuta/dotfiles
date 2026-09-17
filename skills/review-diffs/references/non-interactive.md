@@ -12,11 +12,12 @@ repository's workflow, not this generic skill.
   completion, the overall deadline, cancellation and process cleanup.
 - Each request identifies the worktree, reviewed revision, selected lenses,
   contract and verification evidence. It retains exact execution identities.
-- The coordinator selects the same mandatory floor and risk-dependent optional
-  lenses as SKILL.md, records omissions with reasons, and supplies each lens its
-  scoped instructions. Models/efforts remain those in SKILL.md.
-- Run the selected lenses independently and concurrently, then perform a serial
-  manager pass after every required lens has valid terminal output. A supervisor
+- The coordinator starts the same mandatory floor as managed-review.md, records optional
+  candidates, and supplies each lens its scoped instructions. After the floor
+  completes, it applies managed-review.md's evidence-based escalation gate and starts only
+  the optional lenses that qualify. Models/efforts remain those in managed-review.md.
+- Run each phase's selected lenses independently and concurrently, then perform a serial
+  manager pass after every required or escalated lens has valid terminal output. A supervisor
   may invoke a separate manager CLI with the caller's model policy; it must not
   replace manager judgment with concatenation, voting, or rewritten findings.
 
@@ -25,7 +26,7 @@ repository's workflow, not this generic skill.
 - Return findings as the supervisor's structured final response. Do not also
   write a canonical reviewer-result file or wait for a second finalize prompt.
   The supervisor persists the returned content without changing its meaning.
-- Lens prompts retain their perspective from SKILL.md; only output formatting
+- Lens prompts retain their perspective from managed-review.md; only output formatting
   changes. Manager input includes the contract, reviewed diff, all lens results,
   dropped-with-reason lenses and actual verification evidence.
 - The manager reads surrounding source, classifies real/duplicate/out-of-scope

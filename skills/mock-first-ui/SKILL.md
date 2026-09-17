@@ -1,6 +1,6 @@
 ---
 name: mock-first-ui
-description: Build app screens from approved HTML mock sets without per-screen visual drift by freezing shared tokens, components, a gallery, a UI constitution, a reference screen, and serial verification gates. Use when HTML mocks are binding design specs and screen implementation is dispatched in batches to coding agents, especially after independent screen work has caused inconsistent styling.
+description: "Implement multiple app screens from approved HTML mocks with shared visual primitives and cross-screen verification."
 ---
 
 # Mock-First UI

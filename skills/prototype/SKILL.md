@@ -1,6 +1,6 @@
 ---
 name: prototype
-description: Generate 3 HTML prototype variants using a team of parallel agents. Each agent creates a distinct design pattern (e.g., hover effects, animations, layouts) based on user prompts or docs/goal.md. Use when the user wants to explore multiple design directions for a UI component.
+description: "Explore multiple UI design directions by generating three HTML prototypes with parallel agents."
 ---
 
 # Prototype orchestrator

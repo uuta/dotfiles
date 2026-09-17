@@ -1,6 +1,6 @@
 ---
 name: browser-interactive
-description: Interactively automate and verify browser workflows with Playwright. Use for waits, clicks, forms, authenticated flows, multi-step navigation, localhost, E2E assertions, or any task requiring control between page load and result. Use Cloudflare Chromium for public sites by default and a local browser for localhost or repository-local E2E behavior.
+description: "Operate browser workflows that need clicks, forms, login, navigation, or E2E assertions, including localhost."
 ---
 
 # Browser Interactive

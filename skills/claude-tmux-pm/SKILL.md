@@ -1,6 +1,6 @@
 ---
 name: claude-tmux-pm
-description: tmux 上の Claude Code セッションに GitHub の sub-issue を順番に割り当てるスキル。親 Issue 配下の sub-issue を番号順に見て、明示的な implementation contract / Done when / Not done if / blackbox verification を持つ ready issue を `feat/{issue_number}` ブランチの専用 worktree（basename は issue number）で Claude Code に実装させる。workspace / worktree の配置規約は `agent-workspace` に従う。Claude は実装と検証まで行い、Codex が phase gate や diff review を挟んでから commit / push / PR を行う。L または contract 不足の issue は通常割り当てず、先にユーザーと詰める。「Claude Code に割り当てて」「tmux の Claude に投げて」「agent に issue を振って」などで使用。
+description: "GitHub の ready sub-issue を tmux の Claude Code に割り当て、worktree 準備から実装レビューまで進める。"
 allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 ---
 

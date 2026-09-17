@@ -1,6 +1,6 @@
 ---
 name: component-extraction
-description: Use when a UI change, bug fix, or review touches repeated inline UI blocks and Codex should decide whether to extract a small presentational domain component. Helps identify repeated UI with shared visual or interaction responsibility, keep domain state management in callers, define explicit component state such as enabled/disabled, and avoid over-extracting generic atoms.
+description: "Evaluate or extract repeated UI blocks that share a domain responsibility and visual or interaction semantics."
 ---
 
 # Component Extraction
@@ -23,7 +23,7 @@ Extract repeated UI into presentational components when it reduces duplication a
    - Do not read providers, notifiers, repositories, or services inside the presentational component.
    - Use theme-derived colors inside the component so call sites do not repeat ad hoc color logic.
 6. Update call sites to pass state and callbacks from their existing domain logic.
-7. Add or update focused tests near the changed layer:
+7. Verify the changed behavior using existing checks; add focused coverage where a material gap remains:
    - Component/widget tests for disabled visuals and tap behavior when feasible.
    - Caller tests for domain state mapping, such as `isLoading` becoming disabled, when practical.
    - Do not update visual baselines or golden images unless that visual change is expected and approved.
