@@ -19,3 +19,19 @@
 
 - Keep repository-specific workflow/state rules close to their implementation.
 - `u_agents` moved to https://github.com/uuta/uuter.
+
+## Maintaining shared instructions
+
+- `skills/` is shared by Codex and Claude; `codex/AGENTS.md` is linked from
+  `~/.codex/AGENTS.md`. Keep changes model-neutral unless an execution workflow
+  deliberately selects a model. Preserve caller-selected engines and permissions.
+- Skill descriptions should state the capability and its decision boundary.
+  Keep procedures in the body and conditional details in linked references.
+  Do not make ordinary edits load a stack of preflight, clarification, and review skills.
+- Base new rules on repeated history or a concrete failure mechanism. Prefer
+  correcting the responsible skill to adding another global prohibition.
+- When a skill path has moved, use the verified installed equivalent unless the
+  caller pins its contents/version. Do not create a second copy to repair an alias.
+- Preserve existing edits when revising skills. Validate changed frontmatter and
+  reference links, and inspect representative task decisions; wording checks alone
+  do not demonstrate improved agent behavior.
