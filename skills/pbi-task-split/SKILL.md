@@ -1,6 +1,6 @@
 ---
 name: pbi-task-split
-description: PBI（Product Backlog Item）を agent 実装向けの粗めの実装タスクまたは phase gate に分割する。親 issue の ready 判定、implementation contract、blackbox/runtime acceptance、依存関係、review checkpoint を整理し、方針未決・仕様矛盾・単なる明確化を sub-issue 化しない。UI PBI では approved screenshot/golden が source of truth の場合だけ visual-ui-contract を使い、共通部品・tokens・UI vocabulary が source of truth の場合は vocabulary contract で並列実装可能にする。
+description: "PBI を実装可能な粗めのタスクと phase gate に分割し、受け入れ条件・依存関係・検証を整理する。"
 ---
 
 # PBI Task Split
@@ -31,7 +31,7 @@ Ready でない例:
 - 本文内で方針が矛盾している
 - acceptance criteria が現在のコード・CLI・運用契約では実行不能
 - 「どちらを採用するか」「何を対象外にするか」が決まっていない
-- 外部サービス、実機、VPS、runtime 値などが完了条件なのに、実施可否や deferral が書かれていない
+- 外部サービス、VPS、端末固有の機能など、その場で利用できない環境が完了条件なのに、実施可否や deferral が書かれていない
 - 「検討する」「方針を明確化する」「仕様を決める」が主目的になっている
 
 Ready でない場合:
@@ -44,6 +44,17 @@ Ready でない場合:
 - 対象となるエンドポイント・機能の現在の実装を確認
 - 関連するファイル（Router, UseCase, Schema, Domain等）を特定
 - 参考になる既存実装（類似機能）があれば調査
+
+### 2.5 実行可能な検証契約を決める
+
+acceptance criteria は、実装 agent が通常利用できるローカル環境、CI、fixture、mock、Simulator / Emulator で完了できるように設計する。
+
+- mobile PBI は iOS Simulator / Android Emulator を標準の runtime verification とする
+- 物理端末を Required verification や merge gate に自動で追加しない
+- Bluetooth、実センサー、端末固有性能など、代替環境では確認できない挙動だけを physical-device-only check として分離する
+- physical-device-only check は、ユーザーが明示的に必須化し、利用可能な端末と実施方法が確認できている場合だけ完了条件にする。それ以外は任意の follow-up または accepted deferral とし、Issue / PR / merge をブロックしない
+- 実機と書かれた既存要件が「実アプリ上の確認」を意味する可能性がある場合、物理端末必須と解釈せず、まず Simulator / Emulator で観測できる acceptance に置き換える
+- Required verification には利用する環境と実行可能な command / 操作を具体的に書く
 
 ### 3. boundary / contract の有無を判定
 - 以下のいずれかに当てはまる場合、**実装タスクを切る前に boundary / contract を親 issue または実装 issue 本文に固定する**
@@ -246,6 +257,9 @@ approved screenshot がなく、共通部品・tokens・type roles・color roles
 - [ ] レイヤー観点を確認したが、レイヤーごとの過剰分割をしていないか
 - [ ] 1タスク1 implementation contract になっているか
 - [ ] acceptance criteria に単体テストだけでなく blackbox / runtime verification が含まれるか
+- [ ] mobile の runtime verification は Simulator / Emulator で完了可能か
+- [ ] 物理端末を慣例や念のためで Required verification / merge gate に入れていないか
+- [ ] 端末固有の確認が必要なら、代替不能な理由と実施可否を確認し、必須でなければ non-blocking follow-up / accepted deferral にしたか
 - [ ] 共通化すべき部品を特定したか
 - [ ] 独立タスクを明示したか
 - [ ] 依存関係を整理したか
