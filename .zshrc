@@ -397,7 +397,7 @@ fi
 
 # symbolic link for Claude agents and skills
 if [ ! -e "$HOME/.claude/skills" ]; then
-    ln -s "$HOME/dotfiles/skills" "$HOME/.claude/skills"
+    ln -sfn "$HOME/dotfiles/skills" "$HOME/.claude/skills"
 fi
 
 if [ ! -e "$HOME/.claude/hooks" ]; then
@@ -406,11 +406,10 @@ fi
 
 # symbolic link for Codex/ChatGPT skills
 mkdir -p "$HOME/.agents"
-if [ -L "$HOME/.agents/skills" ]; then
+# Keep correct links intact; concurrent shells must not follow the destination
+# symlink and accidentally create dotfiles/skills/skills.
+if [ ! -e "$HOME/.agents/skills" ] || { [ -L "$HOME/.agents/skills" ] && [ "$(readlink "$HOME/.agents/skills")" != "$HOME/dotfiles/skills" ]; }; then
     ln -sfn "$HOME/dotfiles/skills" "$HOME/.agents/skills"
-fi
-if [ ! -e "$HOME/.agents/skills" ]; then
-    ln -s "$HOME/dotfiles/skills" "$HOME/.agents/skills"
 fi
 
 # Git diff highlight
