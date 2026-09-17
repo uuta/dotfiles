@@ -268,6 +268,11 @@ if [ ! -e "$HOME/.hammerspoon" ]; then
     ln -s "$HOME/dotfiles/.hammerspoon" "$HOME/.hammerspoon"
 fi
 
+### symlink the tmux config when it doesn't exist yet
+if [ -L "$HOME/.tmux.conf" ] || [ ! -e "$HOME/.tmux.conf" ]; then
+    ln -sfn "$HOME/dotfiles/.tmux.conf" "$HOME/.tmux.conf"
+fi
+
 if [ ! -e "$HOME/Library/Application Support/bottom/bottom.toml" ]; then
     ln -s "$XDG_CONFIG_HOME/bottom/bottom.toml" "$HOME/Library/Application Support/bottom/bottom.toml"
 fi
@@ -332,6 +337,9 @@ source "$HOME/.openai_key.zsh"
 
 # eBay API keys (EBAY_CLIENT_ID / EBAY_CLIENT_SECRET) for the ebay MCP server
 [[ -f "$HOME/.ebay_keys.zsh" ]] && source "$HOME/.ebay_keys.zsh"
+
+# Cloudflare Browser Run credentials for browser-quick / browser-interactive
+[[ -f "$HOME/.cloudflare_keys.zsh" ]] && source "$HOME/.cloudflare_keys.zsh"
 
 # u-agents runner env (U_AGENTS_DATABASE_URL / RUNNER_ID / MACHINE_ID).
 # Copy ~/uuter/main/.u_agents_env.zsh.template to ~/.u_agents_env.zsh and fill
@@ -515,7 +523,18 @@ if [ -f "$HOME/dotfiles/tmux-prune-windows.sh" ]; then
     fi
 fi
 
+# OpenRouter Grok image generation command
+if [ -f "$HOME/dotfiles/grok-image.sh" ]; then
+    mkdir -p "$HOME/.local/bin"
+    if [ -L "$HOME/.local/bin/grok-image" ] || [ ! -e "$HOME/.local/bin/grok-image" ]; then
+        ln -sfn "$HOME/dotfiles/grok-image.sh" "$HOME/.local/bin/grok-image"
+    fi
+fi
+
 export PATH="/opt/homebrew/opt/mysql-client/bin:$PATH"
 
 # Added by Antigravity
 export PATH="/Users/yutaaoki/.antigravity/antigravity/bin:$PATH"
+
+# sentry
+fpath=("/Users/yutaaoki/.local/share/zsh/site-functions" $fpath)
