@@ -1,0 +1,4 @@
+interface:
+  display_name: "Explanation Diagram"
+  short_description: "Explain situations with clear icons and arrows"
+  default_prompt: "Use $explanation-diagram to explain this situation in one simple image with icons, arrows, and short labels."
