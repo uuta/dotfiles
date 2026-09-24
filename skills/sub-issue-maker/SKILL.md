@@ -43,6 +43,7 @@ task 粒度の目安:
 - 複数レイヤーをまたいでも、同じ目的・同じ acceptance・同じ rollback boundary なら 1 sub-issue にまとめる
 - phase は原則 sub-issue ではなく、issue 本文内の review / gate checkpoint として扱う
 - 各 sub-issue に `Done when` / `Not done if` / `Required verification` を書く
+- Required verification の書き方は pbi-task-split §2.5 に従う（外部状態が必要な確認は、担当付きの「Merge 前の確認」に分ける）
 - verification は単体テストだけでなく blackbox / runtime acceptance を含める
 
 - Frontend

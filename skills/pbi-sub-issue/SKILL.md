@@ -117,6 +117,9 @@ gh issue create \
 - [ ] \`unit/integration command\`
 - [ ] \`blackbox/runtime command\`
 
+## Merge 前の確認（外部状態が必要なもののみ・担当必須）
+- [ ] {確認内容} — 担当: {supervisor / owner}、タイミング: {merge 前 / 次回リリース時}
+
 ## 依存
 - #{依存するIssue番号}
 
@@ -186,6 +189,9 @@ gh sub-issue add 1324 --sub-issue-number $ISSUE_NUM
 ## Required Verification
 - [ ] `command`
 - [ ] `blackbox/runtime command`
+
+## Merge 前の確認（外部状態が必要なもののみ・担当必須）
+- [ ] {確認内容} — 担当: {supervisor / owner}、タイミング: {merge 前 / 次回リリース時}
 
 ## 依存
 - 依存タスクがあれば記載
