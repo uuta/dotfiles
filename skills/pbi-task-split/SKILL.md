@@ -45,11 +45,23 @@ Ready でない場合:
 - 関連するファイル（Router, UseCase, Schema, Domain等）を特定
 - 参考になる既存実装（類似機能）があれば調査
 
+### 2.25 全体像を図で共有する
+
+初めて扱う基盤・外部サービスの導入、または複数機能をまたぐPBIでは、タスク分割前に [explanation-diagram](../explanation-diagram/SKILL.md) を使い、人間向けの構成図を提示する。単純な局所修正には不要。既存の図が現在の要件・実装に合っていれば再利用する。
+
+- 完成時のユーザー操作から結果までを、少数のアイコンと矢印で示す。SVGを描いてPNGにするかimagegenを使い、短いラベルを中心にする。説明文を箱に詰め込まない。
+- 部品だけでなく接続も調べ、「既存で確認済み」「新規実装・接続が必要」「未確認」を区別する。コードがあること、mockで成功すること、実サービスにつながることを同じ完了状態にしない。
+- 接続先の実在、採用サービスのAPI契約、環境設定・保存先の準備を確認する。URLやsecretの注入待ちと、呼び出し先そのものの未実装・契約不一致を区別する。
+- 図には対象時点と、完成後にできることを短く示す。根拠・未決の前提・詳しい契約は図の外に置く。
+- 親PBIまたは分割案の冒頭に画像を含め、人間が分割の前提を確認できるようにする。公開先から読める画像参照を使い、ローカルファイルをGitHubに添付済みと扱わない。投稿・アップロードは依頼された範囲で行う。
+- 図で発見した重要な未決事項は親PBIへ戻す。既に合意済みの前提や通常の実装判断について、図を理由に新しい承認待ちを作らない。
+
 ### 2.5 実行可能な検証契約を決める
 
-acceptance criteria は、実装 agent が通常利用できるローカル環境、CI、fixture、mock、Simulator / Emulator で完了できるように設計する。
+acceptance criteria は、実装 agent が利用できる環境で実行可能にし、ローカル環境、CI、fixture、mock、Simulator / Emulator がそれぞれ何を証明するかを明記する。
 
 - mobile PBI は iOS Simulator / Android Emulator を標準の runtime verification とする
+- Simulator / Emulatorへの置換は端末の変更であり、接続先をmockに置き換える合意ではない。実サービスとの接続がPBIの目的なら、最小の実接続フローの検証環境・担当・前提条件をphase gateに含める。mock成功や本番公開の延期を、その実接続の完了証拠にしない。
 - 物理端末を Required verification や merge gate に自動で追加しない
 - Bluetooth、実センサー、端末固有性能など、代替環境では確認できない挙動だけを physical-device-only check として分離する
 - physical-device-only check は、ユーザーが明示的に必須化し、利用可能な端末と実施方法が確認できている場合だけ完了条件にする。それ以外は任意の follow-up または accepted deferral とし、Issue / PR / merge をブロックしない
@@ -151,6 +163,8 @@ approved screenshot がなく、共通部品・tokens・type roles・color roles
 - 並列化したい場合でも、boundary は親 issue または各実装 issue の contract として固定する
 - frontend / backend で契約を共有する場合、どの artifact が source of truth かを書く
 
+図を作ったPBIでは、分割後に未完成の部品・接続を実装issue候補または担当付きphase gateへ対応付ける。対応表は図の外に置き、番号が未発行なら候補名を使う。環境準備から一連の実接続検証まで担当のない箇所が残っていないか確認し、延期する箇所は親PBIで未完了の条件として追跡する。子Issueのマージだけを親PBIの動作完了と扱わない。
+
 ### 7. クリーンアップ計画
 - 削除対象ファイルを洗い出し
 - 旧コード、旧テスト、不要なimportを特定
@@ -170,6 +184,10 @@ approved screenshot がなく、共通部品・tokens・type roles・color roles
 
 ## 概要
 {GitHub Issue URL} に基づき、{機能概要}を実装する。
+
+## 全体像（該当PBIのみ）
+![{ユーザー操作から結果までの構成と現状}](画像の参照先)
+{対象時点・完成後にできることを短く記載。根拠と未決事項は図の外へ。}
 
 ## 方針
 - {エンドポイント構成等}
@@ -222,6 +240,8 @@ approved screenshot がなく、共通部品・tokens・type roles・color roles
 ## 依存関係
 {ASCII図で依存関係を表示}
 
+{全体像の図を作った場合: 未完成の部品・接続 → 担当issue候補 / phase gate の対応を記載。}
+
 **並列実施可能:**
 - {並列可能なタスクの説明}
 
@@ -247,6 +267,8 @@ approved screenshot がなく、共通部品・tokens・type roles・color roles
 
 ## 観点チェックリスト
 
+- [ ] 新しい基盤・外部サービス・複数機能をまたぐPBIでは、分割前に短いラベルの構成図を提示したか
+- [ ] 部品と接続の既存・新規・未確認を区別し、分割後に未完成箇所の担当と実接続の検証gateを対応付けたか
 - [ ] boundary / contract を先に固定すべきPBIか判定したか
 - [ ] 親 issue が ready でない場合、sub-issue 化せず spec correction に止めたか
 - [ ] 方針未決・仕様矛盾・単なる明確化を sub-issue にしていないか

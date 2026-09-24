@@ -59,6 +59,12 @@ sub-issue 作成前に、親 issue とタスク分割プランが ready か確�
 - 複数レイヤーをまたいでも、同じ目的・同じ acceptance・同じ rollback boundary なら 1 sub-issue にまとめる
 - phase は原則 sub-issue ではなく、issue 本文内の review checkpoint として書く
 
+構成図を含むプランの場合:
+
+- 親PBIの図と、未完成の部品・接続から担当タスクへの対応を引き継ぐ。図の対象条件と作成手順は [pbi-task-split](../pbi-task-split/SKILL.md#225-全体像を図で共有する) を参照し、この段階で各子Issue用の図を重複生成しない。
+- 各子Issueには担当部分・接続と親の図への参照を入れる。Issue番号発行後に候補名との対応を作成結果へ記載し、親PBIを更新する依頼がある場合はその対応にも反映する。
+- 環境準備・実接続・一連の動作確認に担当漏れがあれば、作成前に分割案を補う。mock検証済みを実接続済みへ読み替えず、延期条件を引き継ぐ。
+
 visual UI PBI の場合:
 
 - 先に source of truth が screenshot-driven か vocabulary-driven か確認する。
