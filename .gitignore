@@ -3,6 +3,7 @@
 **/apps.json
 
 # Runtime-generated config (not dotfiles)
+/skills/synced
 .config/.wrangler/
 .config/swiftpm/
 .config/settings
