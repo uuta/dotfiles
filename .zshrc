@@ -338,9 +338,6 @@ source "$HOME/.openai_key.zsh"
 # eBay API keys (EBAY_CLIENT_ID / EBAY_CLIENT_SECRET) for the ebay MCP server
 [[ -f "$HOME/.ebay_keys.zsh" ]] && source "$HOME/.ebay_keys.zsh"
 
-# Cloudflare Browser Run credentials for browser-quick / browser-interactive
-[[ -f "$HOME/.cloudflare_keys.zsh" ]] && source "$HOME/.cloudflare_keys.zsh"
-
 # u-agents runner env (U_AGENTS_DATABASE_URL / RUNNER_ID / MACHINE_ID).
 # Copy ~/uuter/main/.u_agents_env.zsh.template to ~/.u_agents_env.zsh and fill
 # it in so the tmux PM pane and launcher/watchdog share the same runtime
