@@ -6,7 +6,7 @@ description: |
   Use proactively when the user asks for a plan, architecture, task split, implementation strategy, PR review, issue review, agent handoff, or "is this right?" style judgment. Also use when an implementation appears to be moving forward with vague requirements, fake done conditions, speculative future extensibility, "existing behavior must be preserved" assumptions, or code that may reimplement existing responsibilities.
 
   Do not use for purely mechanical edits, simple command execution, formatting-only work, or cases where the user explicitly asks not to debate assumptions.
-model: sonnet
+model: claude-opus-5-5
 color: red
 ---
 
