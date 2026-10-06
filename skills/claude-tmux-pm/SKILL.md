@@ -22,6 +22,7 @@ allowed-tools: Bash(tmux:*), Bash(gh:*), Bash(git:*)
 - Claude が「完了」と言っても、そのまま成功扱いにしない。必ず diff review を挟む
 - merge 済み PR に対応する専用 pane / window / worktree は、clean であれば回収してよい。識別は `<issue_number>` を共通キーにする
 - issue 予約は pane title だけでなく window 名にも残す
+- 親 issue の最初の sub-issue を渡す前に、[sub-issue-coverage](../sub-issue-coverage/SKILL.md) で親 issue 全体の照合を1回行う。担当なし・宛先のない先送り・使う側なし・検証が危険のどれかがあれば、割り当てずにオーナーに報告する
 - 実装 issue を Claude に渡す前に、sub-issue 側に明示的な implementation contract があることを確認する
 - 初回 assignment prompt には scope だけでなく `Done when` / `Not done if` / `Hard blockers` を必ず含める。runtime acceptance や external config が絡む issue を「コードと docs は入った」で完了扱いにさせてはいけない
 - issue が phase gate を持つ場合、phase は別 issue ではなく review checkpoint として扱う。Claude には phase ごとの blackbox/runtime verification と「各 phase 完了時に止まって報告する」指示を含める

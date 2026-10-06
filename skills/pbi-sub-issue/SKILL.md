@@ -42,6 +42,8 @@ sub-issue 作成前に、親 issue とタスク分割プランが ready か確�
 
 この場合は sub-issue を作らず、親 issue に spec correction コメントまたは本文修正案を出す。
 
+あわせて [sub-issue-coverage](../sub-issue-coverage/SKILL.md) で、親 issue の要件・決定事項（コメントでの決定を含む）すべてに担当タスクがあるか、作るものすべてに使う側のタスクがあるか、検証手順が共有アカウントや本番を壊さないかを照合する。問題があれば作成前にプランを直す。作成後に既存の子 issue と合わせてもう一度照合する。
+
 ### 3. タスク分割プランの読み込み
 - Obsidian vault または plan file からタスク一覧を取得
 - 各タスクの情報を整理:

@@ -13,6 +13,8 @@ sub-issue は ready な実装単位だけに切る。agent が issue を読ん�
 
 初めて扱う基盤・外部サービス、または複数機能をまたぐPBIでは、[pbi-task-split の全体像共有手順](../pbi-task-split/SKILL.md#225-全体像を図で共有する)に従い、分割前に `explanation-diagram` で構成と既存・新規・未確認の接続を図示する。既存の正確な図は再利用し、単純な局所修正には追加しない。分割後は未完成の部品・接続に担当issueまたはphase gateを対応付け、実際に使えるまでの仕事が漏れていないか確認する。
 
+分割案ができたら、sub-issue を作る前に [sub-issue-coverage](../sub-issue-coverage/SKILL.md) で、親 issue の要件・決定事項すべてに担当の分割案があるか、作るもの（endpoint など）すべてに使う側があるかを照合する。担当なし・宛先のない先送り・使う側なしがあれば、分割案を直してから作る。
+
 sub-issue にしてはいけないもの:
 
 - 方針決定、仕様確認、単なる「明確化」
