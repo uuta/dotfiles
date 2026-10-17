@@ -301,4 +301,12 @@
   //       "selectSurfaceByNumber" : "ctrl+1"
   //     }
   //   },
+  "shortcuts": {
+    "bindings": {
+      "resize-pane-left": null,
+      "resize-pane-right": null,
+      "resize-pane-up": null,
+      "resize-pane-down": null
+    }
+  }
 }
