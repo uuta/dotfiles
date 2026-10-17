@@ -128,10 +128,6 @@ alias gb='git branch'
 # claude code
 alias c='claude'
 alias c-d='claude --dangerously-skip-permissions'
-alias c-p='claude --permission-mode plan'
-
-# cursor-agent
-alias c-a='cursor-agent'
 
 # codex
 alias co='codex'
@@ -140,6 +136,8 @@ alias co-d='codex --dangerously-bypass-approvals-and-sandbox'
 # qwen
 alias qw='qwen'
 
+# opencode
+alias oc='opencode'
 # aicommits (settings)
 alias aicd='aicommits config set generate=3 max-length=40 locale=en model=gpt-5-nano'
 

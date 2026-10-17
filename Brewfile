@@ -72,6 +72,7 @@ brew "rustup"
 brew "tree-sitter-cli"
 brew "rtk"
 brew "herdr"
+brew "opencode"
 
 # Go
 brew "gopls"
