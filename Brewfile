@@ -72,6 +72,7 @@ brew "rustup"
 brew "tree-sitter-cli"
 brew "rtk"
 brew "herdr"
+brew "opencode"
 
 # Go
 brew "gopls"
@@ -131,6 +132,7 @@ cask "capcut"
 cask "sentry-cli"
 cask "blender"
 cask "chatgpt"
+cask "zcode"
 
 # WezTerm
 tap "wez/wezterm"
