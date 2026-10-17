@@ -1,11 +1,12 @@
 {
   "trustedformulae": [
     "discoteq/discoteq/flock",
+    "facebook/fb/idb-companion",
     "go-task/tap/go-task",
-    "leoafarias/fvm/fvm",
     "nat-n/poethepoet/poethepoet"
   ],
   "trustedcasks": [
+    "go-task/tap/go-task",
     "https://github.com/wezterm/homebrew-wezterm.git/wezterm"
   ]
 }
