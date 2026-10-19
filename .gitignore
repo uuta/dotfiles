@@ -20,3 +20,7 @@ skills/browser-interactive/node_modules/
 .worktrees/
 __pycache__/
 *.pyc
+
+# uuter dedicated herdr session state and its isolated config (worktree paths, logs)
+.config/herdr/sessions/
+.config/u-agents/
