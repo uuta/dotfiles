@@ -24,6 +24,7 @@
 # Runtime-generated files (not dotfiles)
 /skills/synced
 /output/
+/.local/
 .playwright-mcp/
 test/node_modules/
 skills/browser-interactive/node_modules/
