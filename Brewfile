@@ -73,6 +73,7 @@ brew "tree-sitter-cli"
 brew "rtk"
 brew "herdr"
 brew "opencode"
+brew "tor"
 
 # Go
 brew "gopls"
@@ -132,6 +133,7 @@ cask "blender"
 cask "chatgpt"
 cask "zcode"
 cask "opencode-desktop"
+cask "tor-browser"
 
 # WezTerm
 tap "wez/wezterm"
