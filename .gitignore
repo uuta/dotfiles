@@ -2,25 +2,30 @@
 .DS_Store
 **/apps.json
 
-# Runtime-generated config (not dotfiles)
-/skills/synced
-.config/.wrangler/
-.config/swiftpm/
-.config/settings
-.config/tool_state
-.config/gcloud/
-.config/.config
-.config/.copilot/
-.config/configstore/
-.config/github-copilot/
+# ~/.config links here, so every app writes into it: track only listed configs
+.config/*
+!.config/nvim/
+!.config/WezTerm/
+!.config/alacritty/
+!.config/bottom/
+!.config/cmux/
+!.config/gh/
+!.config/ghostty/
+!.config/git/
+!.config/glow/
+!.config/homebrew/
+!.config/jj/
+!.config/karabiner/
+.config/cmux/*.bak
+.config/gh/hosts.yml
+.config/homebrew/trust.json.lock
 .config/karabiner/automatic_backups/
+
+# Runtime-generated files (not dotfiles)
+/skills/synced
 .playwright-mcp/
 test/node_modules/
 skills/browser-interactive/node_modules/
 .worktrees/
 __pycache__/
 *.pyc
-
-# herdr runtime state: logs, sockets, session layout, uuter sessions
-.config/herdr/
-.config/u-agents/
