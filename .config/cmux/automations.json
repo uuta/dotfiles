@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "recolor-claude-status",
+      "when": { "event": "sidebar.metadata.updated" },
+      "where": {
+        "command": "set_status",
+        "args": { "not": { "contains": "icon=bolt.fill" } }
+      },
+      "rate_limit": { "interval_seconds": 1, "maximum": 20 },
+      "then": [
+        {
+          "action": "run",
+          "command": "/usr/bin/python3 \"$HOME/.config/cmux/recolor-agent-status.py\"",
+          "timeout_seconds": 10
+        }
+      ]
+    }
+  ]
+}
