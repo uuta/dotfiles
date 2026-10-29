@@ -160,8 +160,9 @@ alias vv='vi ~/.vimrc'
 alias cdnn='cd ~/dotfiles/.config/nvim'
 
 ## SocialDog
-alias cdss='cd ~/socialdog'
-alias cds='cd ~/socialdog/web'
+alias cds='cd ~/speakgain'
+alias cdsw='cd ~/speakgain/.worktrees'
+alias cdsd='cd ~/speakgain/.worktrees/develop'
 
 ## Trander
 alias cdt='cd ~/trander'
@@ -397,6 +398,11 @@ fi
 
 if [ ! -e "$HOME/.claude/hooks" ]; then
     ln -s "$HOME/dotfiles/hooks" "$HOME/.claude/hooks"
+fi
+
+# symbolic link for cmux automations (cmux only reads ~/.cmuxterm)
+if [ -d "$HOME/.cmuxterm" ]; then
+    ln -sf "$HOME/dotfiles/.config/cmux/automations.json" "$HOME/.cmuxterm/automations.json"
 fi
 
 # symbolic link for Codex/ChatGPT skills
