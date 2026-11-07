@@ -1,7 +1,6 @@
 {
   "trustedformulae": [
     "discoteq/discoteq/flock",
-    "facebook/fb/idb-companion",
     "go-task/tap/go-task",
     "nat-n/poethepoet/poethepoet"
   ],
