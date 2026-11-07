@@ -15,7 +15,7 @@ brew "prettier"
 brew "php"
 brew "typescript"
 brew "zinit"
-brew "romkatv/powerlevel10k/powerlevel10k"
+brew "powerlevel10k"
 brew "bat"
 brew "peco"
 brew "docker-compose"
@@ -74,6 +74,7 @@ brew "rtk"
 brew "herdr"
 brew "opencode"
 brew "tor"
+brew "fvm"
 
 # Go
 brew "gopls"
@@ -146,10 +147,6 @@ brew "bun"
 # Poe
 tap "nat-n/poethepoet"
 brew "nat-n/poethepoet/poethepoet"
-
-# FVM
-tap "leoafarias/fvm"
-brew "leoafarias/fvm/fvm"
 
 mas 'Dashlane', id: 517914548
 mas 'Line', id: 539883307
