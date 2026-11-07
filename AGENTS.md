@@ -22,8 +22,9 @@
 
 ## Maintaining shared instructions
 
-- `skills/` is shared by Codex and Claude; `codex/AGENTS.md` is linked from
-  `~/.codex/AGENTS.md`. Keep changes model-neutral unless an execution workflow
+- `skills/` is shared by Codex and Claude. `agents/AGENTS.md` holds the global
+  rules for both: `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md` link to it.
+  Put Claude-only files under `claude/`. Keep changes model-neutral unless an execution workflow
   deliberately selects a model. Preserve caller-selected engines and permissions.
 - Skill descriptions should state the capability and its decision boundary.
   Keep procedures in the body and conditional details in linked references.

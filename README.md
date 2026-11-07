@@ -21,7 +21,8 @@ Personal macOS development environment configuration.
 .config/          XDG configs (nvim, zsh, git, alacritty, ghostty, etc.)
 .claude/          Claude AI configuration
 .hammerspoon/     macOS automation
-agents/           Agent definitions
+agents/           Shared AGENTS.md for Codex and Claude
+claude/agents/    Claude subagent definitions
 skills/           Claude skills
 prompts/          Prompt templates
 gh/               GitHub CLI extensions
@@ -53,11 +54,11 @@ Shared configuration for Codex and Claude Code:
 graph LR
     subgraph dotfiles
         P[prompts/]
-        A[agents/]
+        A[claude/agents/]
         S[skills/]
         H[hooks/]
         D[codex/config.toml]
-        E[codex/AGENTS.md]
+        E[agents/AGENTS.md]
         C[.claude/settings.json]
     end
 
@@ -71,6 +72,7 @@ graph LR
         CC[commands/]
         CA[agents/]
         CS[skills/]
+        CM[CLAUDE.md]
         CH[hooks/]
         CJ[settings.json]
     end
@@ -82,10 +84,11 @@ graph LR
     H -->|symlink| CH
     D -->|symlink| CX
     E -->|symlink| CG
+    E -->|symlink| CM
     C -->|symlink| CJ
 ```
 
 - `./prompts.sh` symlinks prompts to both `~/.codex` and `~/.claude/commands`
 - `codex/config.toml` is the dotfiles-owned Codex user configuration
-- `codex/AGENTS.md` is the dotfiles-owned global Codex guidance entrypoint
+- `agents/AGENTS.md` is the global guidance shared by Codex and Claude (`~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md` both link to it)
 - `.zshrc` ensures the managed symlinks exist for shared config and agent tooling

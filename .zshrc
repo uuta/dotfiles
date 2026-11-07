@@ -380,9 +380,11 @@ if [ -f "$HOME/dotfiles/codex/config.toml" ]; then
     ln -sf "$HOME/dotfiles/codex/config.toml" "$HOME/.codex/config.toml"
 fi
 
-if [ -f "$HOME/dotfiles/codex/AGENTS.md" ]; then
-    mkdir -p "$HOME/.codex"
-    ln -sf "$HOME/dotfiles/codex/AGENTS.md" "$HOME/.codex/AGENTS.md"
+# shared agent instructions: Codex and Claude read the same file
+if [ -f "$HOME/dotfiles/agents/AGENTS.md" ]; then
+    mkdir -p "$HOME/.codex" "$HOME/.claude"
+    ln -sf "$HOME/dotfiles/agents/AGENTS.md" "$HOME/.codex/AGENTS.md"
+    ln -sf "$HOME/dotfiles/agents/AGENTS.md" "$HOME/.claude/CLAUDE.md"
 fi
 
 # symbolic link for Claude settings
@@ -392,6 +394,10 @@ if [ -f "$HOME/dotfiles/.claude/settings.json" ]; then
 fi
 
 # symbolic link for Claude agents and skills
+if [ ! -e "$HOME/.claude/agents" ] || { [ -L "$HOME/.claude/agents" ] && [ "$(readlink "$HOME/.claude/agents")" != "$HOME/dotfiles/claude/agents" ]; }; then
+    ln -sfn "$HOME/dotfiles/claude/agents" "$HOME/.claude/agents"
+fi
+
 if [ ! -e "$HOME/.claude/skills" ]; then
     ln -sfn "$HOME/dotfiles/skills" "$HOME/.claude/skills"
 fi

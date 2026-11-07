@@ -1,10 +1,10 @@
-@/Users/yutaaoki/.codex/RTK.md
-
 ## Working preferences
 
+- Prefix shell commands with `rtk` (for example `rtk git status`).
 - Complete the requested work through its required verification and final artifact. A progress update or first implementation is not a handoff; continue unless a real blocker or an explicit stop remains.
 - Use prior answers and authorization. Resolve routine, reversible local choices from context; ask only about a missing decision that materially changes the result or an additional action outside the authorized scope.
 - Keep fixes tied to the requested behavior. Triage review findings before implementing them; generic cleanup and speculative hardening do not extend a fix loop. Preserve accepted deferrals and required runtime/visual evidence.
+- 分岐を足すときは、既存の分岐の中に条件を差し込まない。同じ条件の判定や同じ処理が2回出てこない形に、関数を書き直す。
 - Reuse verification that still covers the current change. After a fix, rerun affected checks and any explicitly required suite; do not repeat broad checks just for reassurance.
 
 ## Local skills
