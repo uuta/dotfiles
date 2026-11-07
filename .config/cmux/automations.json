@@ -16,6 +16,19 @@
           "timeout_seconds": 10
         }
       ]
+    },
+    {
+      "id": "opencode-running-status",
+      "when": { "event": "agent.hook.UserPromptSubmit" },
+      "where": { "agent": "opencode" },
+      "rate_limit": { "interval_seconds": 1, "maximum": 10 },
+      "then": [
+        {
+          "action": "run",
+          "command": "/bin/sh \"$HOME/.config/cmux/opencode-running-status.sh\"",
+          "timeout_seconds": 10
+        }
+      ]
     }
   ]
 }

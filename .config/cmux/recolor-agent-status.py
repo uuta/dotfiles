@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Recolor cmux's built-in Claude Code sidebar status.
+"""Recolor cmux's built-in coding-agent sidebar status (Claude Code, OpenCode, ...).
 
 cmux hard-codes these colors (Running and Needs input share blue, Idle and
 Waiting share gray), so a cmux automation (automations.json) runs this on each
-claude_code set_status event and re-sends the same status with a per-state
-color. The event JSON arrives in CMUX_AUTOMATION_EVENT_JSON.
+set_status event and re-sends the same status with a per-state color. Agent
+integrations share the state icons, so the icon alone selects the color.
+The event JSON arrives in CMUX_AUTOMATION_EVENT_JSON.
 """
 import json
 import os
@@ -43,13 +44,13 @@ def parse(args):
     return key, value, flags
 
 
-def current_icon(workspace):
+def current_icon(workspace, key):
     out = subprocess.run(
         [CMUX, "list-status", "--workspace", workspace],
         capture_output=True, text=True,
     ).stdout
     for line in out.splitlines():
-        if line.startswith("claude_code="):
+        if line.startswith(key + "="):
             for part in line.split():
                 if part.startswith("icon="):
                     return part[len("icon="):]
@@ -64,12 +65,12 @@ def main():
     key, value, flags = parse(payload.get("args") or "")
     color = COLORS.get(flags.get("icon"))
     workspace = flags.pop("tab", None)
-    if key != "claude_code" or not color or not workspace:
+    if not color or not workspace:
         return
     if flags.get("color", "").upper() == color:
         return
     # Skip a stale event: cmux may have moved to another state since.
-    if current_icon(workspace) != flags["icon"]:
+    if current_icon(workspace, key) != flags["icon"]:
         return
     flags["color"] = color
     cmd = [CMUX, "set-status", key, value, "--workspace", workspace]
